@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Quiniela Mundial 2026 | Evill</title>
+    <title>Quiniela Mundial 2026 | Conectio</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
@@ -21,14 +21,14 @@
 </head>
 <body class="min-h-screen pb-20">
 
-    <!-- Modal de Registro (Solo aparece la primera vez) -->
+    <!-- Modal de Registro -->
     <div id="login-modal" class="modal fixed inset-0 z-50 flex items-center justify-center hidden">
         <div class="bg-slate-800 p-8 rounded-2xl border border-slate-700 max-w-sm w-full text-center shadow-2xl">
             <i class="fas fa-futbol text-5xl text-emerald-400 mb-4"></i>
             <h2 class="text-2xl font-bold text-white mb-2">¡Bienvenido a la Quiniela!</h2>
-            <p class="text-slate-400 mb-6">Ingresa tu nombre para comenzar a predecir y competir en tiempo real.</p>
+            <p class="text-slate-400 mb-6">Ingresa tu nombre para comenzar a predecir.</p>
             <input type="text" id="username-input" placeholder="Tu nombre o apodo" class="w-full bg-slate-900 border border-slate-600 rounded-lg px-4 py-3 text-white mb-4 focus:border-emerald-500 focus:outline-none">
-            <button onclick="registerUser()" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 rounded-lg transition">
+            <button onclick="window.registerUser()" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 rounded-lg transition">
                 Entrar a la Quiniela
             </button>
         </div>
@@ -42,14 +42,14 @@
                 <p class="text-xs text-slate-400" id="user-display">Cargando...</p>
             </div>
             <div class="flex gap-2">
-                <button onclick="seedDatabase()" class="bg-slate-700 hover:bg-slate-600 text-slate-200 px-3 py-2 rounded-lg text-xs font-semibold transition" title="Solo para admin la primera vez">
-                    <i class="fas fa-database"></i> Inicializar
+                <button onclick="window.seedDatabase()" class="bg-slate-700 hover:bg-slate-600 text-slate-200 px-3 py-2 rounded-lg text-xs font-semibold transition" title="Solo para admin la primera vez">
+                    <i class="fas fa-database"></i> <span class="hidden sm:inline">Inicializar</span>
                 </button>
-                <button onclick="fetchRealResults()" class="bg-emerald-600 hover:bg-emerald-500 text-white px-3 sm:px-4 py-2 rounded-lg text-sm font-semibold transition flex items-center gap-2">
+                <button onclick="window.fetchRealResults()" class="bg-emerald-600 hover:bg-emerald-500 text-white px-3 sm:px-4 py-2 rounded-lg text-sm font-semibold transition flex items-center gap-2">
                     <i class="fas fa-sync-alt" id="sync-icon"></i> <span class="hidden sm:inline">Actualizar</span>
                 </button>
             </div>
-        </div
+        </div>
     </header>
 
     <main class="max-w-4xl mx-auto px-4 mt-6">
@@ -83,30 +83,23 @@
         </section>
     </main>
 
-    <!-- Leyenda -->
-    <div class="fixed bottom-4 right-4 bg-slate-800 p-3 rounded-lg border border-slate-700 text-xs shadow-2xl z-30 hidden sm:block">
-        <div class="flex items-center gap-2 mb-1"><div class="w-3 h-3 bg-emerald-500/20 border-l-2 border-emerald-500"></div> Exacto (4 pts)</div>
-        <div class="flex items-center gap-2 mb-1"><div class="w-3 h-3 bg-yellow-500/20 border-l-2 border-yellow-500"></div> Ganador (3 pts)</div>
-        <div class="flex items-center gap-2"><div class="w-3 h-3 bg-red-500/10 border-l-2 border-red-500"></div> Fallo (0 pts)</div>
-    </div>
-
-    <!-- FIREBASE SDK (Modular v9+) -->
+    <!-- FIREBASE SDK -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
         import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js";
         import { getFirestore, collection, doc, setDoc, onSnapshot, getDocs, writeBatch } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
 
         // ==========================================
-        // 1. CONFIGURACIÓN DE FIREBASE
+        // 1. CONFIGURACIÓN DE FIREBASE (¡REEMPLAZA ESTO!)
         // ==========================================
-const firebaseConfig = {
-    apiKey: "AIzaSyCfkCPAvcqtHJhit9aLMY02qX_hTKoTg4I",
-    authDomain: "quinielaevill-mundial2026.firebaseapp.com",
-    projectId: "quinielaevill-mundial2026",
-    storageBucket: "quinielaevill-mundial2026.firebasestorage.app",
-    messagingSenderId: "371407927074",
-    appId: "1:371407927074:web:a9f1a9317c7b4ec089577b"
-};
+    const firebaseConfig = {
+        apiKey: "AIzaSyCfkCPAvcqtHJhit9aLMY02qX_hTKoTg4I",
+        authDomain: "quinielaevill-mundial2026.firebaseapp.com",
+        projectId: "quinielaevill-mundial2026",
+        storageBucket: "quinielaevill-mundial2026.firebasestorage.app",
+        messagingSenderId: "371407927074",
+        appId: "1:371407927074:web:a9f1a9317c7b4ec089577b"
+    };
 
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
@@ -114,7 +107,7 @@ const firebaseConfig = {
 
         let currentUser = null;
         let matchesData = [];
-        let predictionsData = {}; // { "userId_matchId": { home, away } }
+        let predictionsData = {};
 
         // ==========================================
         // 2. AUTENTICACIÓN
@@ -122,7 +115,6 @@ const firebaseConfig = {
         onAuthStateChanged(auth, (user) => {
             if (user) {
                 currentUser = user;
-                // Verificar si ya tiene nombre guardado en localStorage
                 const savedName = localStorage.getItem(`quiniela_name_${user.uid}`);
                 if (savedName) {
                     document.getElementById('user-display').textContent = `Jugando como: ${savedName}`;
@@ -140,9 +132,8 @@ const firebaseConfig = {
             
             localStorage.setItem(`quiniela_name_${currentUser.uid}`, name);
             document.getElementById('user-display').textContent = `Jugando como: ${name}`;
-            document.getElementById(' has class 'hidden' -> document.getElementById('login-modal').classList.add('hidden');
+            document.getElementById('login-modal').classList.add('hidden');
             
-            // Guardar usuario en Firestore para el leaderboard
             await setDoc(doc(db, "users", currentUser.uid), {
                 name: name,
                 uid: currentUser.uid,
@@ -150,19 +141,17 @@ const firebaseConfig = {
             }, { merge: true });
             
             initApp();
-        }
+        };
 
         // ==========================================
-        // 3. LÓGICA DE LA APP EN TIEMPO REAL
+        // 3. LÓGICA EN TIEMPO REAL
         // ==========================================
         function initApp() {
-            // Escuchar cambios en partidos (en tiempo real)
             onSnapshot(collection(db, "matches"), (snapshot) => {
                 matchesData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
                 calculateAndRender();
             });
 
-            // Escuchar cambios en predicciones (en tiempo real)
             onSnapshot(collection(db, "predictions"), (snapshot) => {
                 predictionsData = {};
                 snapshot.docs.forEach(doc => {
@@ -175,34 +164,24 @@ const firebaseConfig = {
         function calculateAndRender() {
             if (matchesData.length === 0) return;
 
-            // 1. Calcular puntajes de todos los usuarios
             let leaderboard = {};
             
             matchesData.forEach(match => {
                 const isFinished = match.status === "finished";
-                
-                // Buscar predicción del usuario actual para este partido
                 const predKey = `${currentUser.uid}_${match.id}`;
                 const myPred = predictionsData[predKey];
                 
-                if (myPred) {
-                    match.myHome = myPred.home;
-                    match.myAway = myPred.away;
-                } else {
-                    match.myHome = null;
-                    match.myAway = null;
-                }
+                match.myHome = myPred ? myPred.home : null;
+                match.myAway = myPred ? myPred.away : null;
 
-                // Calcular puntos para TODOS los usuarios que hayan predicho este partido
                 Object.keys(predictionsData).forEach(key => {
                     if (!key.endsWith(`_${match.id}`)) return;
-                    
                     const [uid] = key.split('_');
                     const pred = predictionsData[key];
                     
                     if (!leaderboard[uid]) leaderboard[uid] = { name: "Cargando...", exacts: 0, winners: 0, score: 0 };
 
-                    if (isFinished && pred.home !== null && pred.away !== null) {
+                    if (isFinished && pred.home !== null && pred.away !== null && match.homeScore !== null && match.awayScore !== null) {
                         if (pred.home === match.homeScore && pred.away === match.awayScore) {
                             leaderboard[uid].score += 4;
                             leaderboard[uid].exacts += 1;
@@ -222,15 +201,10 @@ const firebaseConfig = {
                 });
             });
 
-            // Obtener nombres para el leaderboard
             getDocs(collection(db, "users")).then(snapshot => {
                 snapshot.docs.forEach(doc => {
-                    if (leaderboard[doc.id]) {
-                        leaderboard[doc.id].name = doc.data().name;
-                    }
+                    if (leaderboard[doc.id]) leaderboard[doc.id].name = doc.data().name;
                 });
-                
-                // Convertir a array y ordenar
                 const sortedLeaderboard = Object.values(leaderboard).sort((a, b) => b.score - a.score);
                 renderLeaderboard(sortedLeaderboard);
                 renderMatches();
@@ -245,7 +219,8 @@ const firebaseConfig = {
             }
 
             tbody.innerHTML = data.map((p, index) => {
-                const isMe = p.name === localStorage.getItem(`quiniela_name_${currentUser.uid}`);
+                const currentUserName = localStorage.getItem(`quiniela_name_${currentUser.uid}`);
+                const isMe = p.name === currentUserName;
                 return `
                 <tr class="hover:bg-slate-700/50 transition ${isMe ? 'bg-emerald-900/20' : ''}">
                     <td class="px-3 py-3 font-bold ${index === 0 ? 'text-yellow-400' : 'text-slate-400'}">#${index + 1}</td>
@@ -283,7 +258,6 @@ const firebaseConfig = {
                                 <div class="flex-1 text-center sm:text-right w-full sm:w-auto">
                                     <div class="font-bold text-lg">${match.homeTeam}</div>
                                 </div>
-                                
                                 <div class="flex items-center gap-3 bg-slate-900 px-4 py-2 rounded-lg border border-slate-700">
                                     <input type="number" min="0" max="9" class="score-input" 
                                         value="${myH}" 
@@ -295,7 +269,6 @@ const firebaseConfig = {
                                         onchange="window.savePrediction('${match.id}', 'away', this.value)"
                                         ${isFinished ? 'disabled' : ''}>
                                 </div>
-
                                 <div class="flex-1 text-center sm:text-left w-full sm:w-auto">
                                     <div class="font-bold text-lg">${match.awayTeam}</div>
                                     <div class="text-xs text-slate-500 mt-1">${match.date} ${actualScore}</div>
@@ -313,11 +286,7 @@ const firebaseConfig = {
         // ==========================================
         window.savePrediction = async function(matchId, team, value) {
             if (!currentUser) return;
-            
             const predKey = `${currentUser.uid}_${matchId}`;
-            const match = matchesData.find(m => m.id === matchId);
-            
-            // Obtener el valor actual del otro equipo para guardar el objeto completo
             const currentPred = predictionsData[predKey] || { home: null, away: null };
             const newHome = team === 'home' ? (value === '' ? null : parseInt(value)) : currentPred.home;
             const newAway = team === 'away' ? (value === '' ? null : parseInt(value)) : currentPred.away;
@@ -329,8 +298,7 @@ const firebaseConfig = {
                 away: newAway,
                 updatedAt: new Date()
             });
-            // El onSnapshot se encargará de recalcular y renderizar automáticamente
-        }
+        };
 
         window.seedDatabase = async function() {
             if (!confirm("¿Inicializar partidos de ejemplo en la base de datos? (Solo hacer 1 vez)")) return;
@@ -348,23 +316,18 @@ const firebaseConfig = {
             });
             
             await batch.commit();
-            alert("✅ Base de datos inicializada con éxito. Refresca la página.");
-        }
+            alert("✅ Base de datos inicializada con éxito. La página se recargará.");
+            window.location.reload();
+        };
 
         window.fetchRealResults = async function() {
             const icon = document.getElementById('sync-icon');
             icon.classList.add('fa-spin');
-            
-            // AQUÍ IRÍA LA LLAMADA A API-FOOTBALL (Como en la versión anterior)
-            // Por ahora, simulamos que el partido 102 terminó
-            setTimeout(async () => {
-                const matchRef = doc(db, "matches", "102");
-                // Solo actualizar si está programado
-                // En producción, aquí harías el fetch a la API y actualizarías los que estén "finished"
-                alert("🔄 Simulando conexión a API... (En producción, esto traería los resultados reales)");
+            setTimeout(() => {
+                alert("🔄 Simulación: En producción, esto conectaría con la API de fútbol para traer resultados reales.");
                 icon.classList.remove('fa-spin');
             }, 1000);
-        }
+        };
     </script>
 </body>
 </html>
