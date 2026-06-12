@@ -453,7 +453,7 @@
 
             try {
                 // Llamamos a NUESTRO proxy en lugar de directamente a la API
-                const response = await fetch('/api-proxy.php');
+                const response = await fetch('https://api.quiniela.softandnet.site/api-proxy.php');
                 const data = await response.json();
                 
                 if (data.error) {
