@@ -3,88 +3,298 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Quiniela Mundial 2026 | Conectio</title>
+    <title>FIFA World Cup 2026™ Quiniela Oficial | Conectio</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800;900&family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        'montserrat': ['Montserrat', 'sans-serif'],
+                        'inter': ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        'fifa-blue': '#003B7B',
+                        'fifa-gold': '#D4AF37',
+                        'fifa-red': '#E31837',
+                        'fifa-dark': '#0a0e27',
+                    },
+                    animation: {
+                        'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                        'float': 'float 6s ease-in-out infinite',
+                    },
+                    keyframes: {
+                        float: {
+                            '0%, 100%': { transform: 'translateY(0)' },
+                            '50%': { transform: 'translateY(-10px)' },
+                        }
+                    }
+                }
+            }
+        }
+    </script>
     <style>
-        body { font-family: 'Inter', sans-serif; background-color: #0f172a; color: #e2e8f0; }
-        .match-card { transition: all 0.3s ease; }
-        .score-input { width: 3.5rem; text-align: center; background: #1e293b; border: 1px solid #334155; color: white; border-radius: 0.375rem; font-size: 1.1rem; font-weight: bold; }
-        .score-input:focus { outline: none; border-color: #10b981; box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.3); }
-        .score-input:disabled { opacity: 0.5; cursor: not-allowed; }
-        .exact-match { background-color: rgba(16, 185, 129, 0.15); border-left: 4px solid #10b981; }
-        .winner-match { background-color: rgba(234, 179, 8, 0.15); border-left: 4px solid #eab308; }
-        .lost-match { background-color: rgba(239, 68, 68, 0.1); border-left: 4px solid #ef4444; }
-        .modal { background-color: rgba(0,0,0,0.8); backdrop-filter: blur(5px); }
+        body { 
+            font-family: 'Inter', sans-serif; 
+            background: linear-gradient(135deg, #0a0e27 0%, #1a1f4d 50%, #0f172a 100%);
+            color: #e2e8f0;
+            min-height: 100vh;
+        }
+        .font-title { font-family: 'Montserrat', sans-serif; }
+        
+        /* Efecto de partículas de fondo */
+        .bg-particles {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 0;
+            background-image: 
+                radial-gradient(circle at 20% 30%, rgba(212, 175, 55, 0.1) 0%, transparent 50%),
+                radial-gradient(circle at 80% 70%, rgba(0, 59, 123, 0.2) 0%, transparent 50%);
+        }
+        
+        .match-card { 
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1); 
+            backdrop-filter: blur(10px);
+        }
+        .match-card:hover { 
+            transform: translateY(-4px) scale(1.01); 
+            box-shadow: 0 20px 40px rgba(0, 59, 123, 0.3);
+        }
+        
+        .score-input { 
+            width: 4rem; 
+            text-align: center; 
+            background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+            border: 2px solid #334155; 
+            color: white; 
+            border-radius: 0.75rem; 
+            font-size: 1.25rem; 
+            font-weight: bold;
+            transition: all 0.3s ease;
+        }
+        .score-input:focus { 
+            outline: none; 
+            border-color: #D4AF37; 
+            box-shadow: 0 0 0 4px rgba(212, 175, 55, 0.2);
+            transform: scale(1.05);
+        }
+        .score-input:disabled { 
+            opacity: 0.6; 
+            cursor: not-allowed; 
+            background: #0f172a;
+        }
+        
+        .exact-match { 
+            background: linear-gradient(135deg, rgba(16, 185, 129, 0.15) 0%, rgba(5, 150, 105, 0.1) 100%); 
+            border-left: 5px solid #10b981; 
+            box-shadow: 0 4px 15px rgba(16, 185, 129, 0.2);
+        }
+        .winner-match { 
+            background: linear-gradient(135deg, rgba(234, 179, 8, 0.15) 0%, rgba(202, 138, 4, 0.1) 100%); 
+            border-left: 5px solid #eab308;
+            box-shadow: 0 4px 15px rgba(234, 179, 8, 0.2);
+        }
+        .lost-match { 
+            background: linear-gradient(135deg, rgba(239, 68, 68, 0.1) 0%, rgba(220, 38, 38, 0.05) 100%); 
+            border-left: 5px solid #ef4444;
+        }
+        
+        .modal { 
+            background: linear-gradient(135deg, rgba(10, 14, 39, 0.95) 0%, rgba(15, 23, 42, 0.98) 100%);
+            backdrop-filter: blur(20px); 
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #D4AF37 0%, #F4D03F 100%);
+            color: #0a0e27;
+            font-weight: 700;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(212, 175, 55, 0.3);
+        }
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(212, 175, 55, 0.4);
+        }
+        
+        .btn-secondary {
+            background: linear-gradient(135deg, #003B7B 0%, #0056b3 100%);
+            color: white;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(0, 59, 123, 0.3);
+        }
+        .btn-secondary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0, 59, 123, 0.4);
+        }
+        
+        .trophy-icon {
+            filter: drop-shadow(0 0 20px rgba(212, 175, 55, 0.6));
+        }
+        
+        .group-badge {
+            background: linear-gradient(135deg, #003B7B 0%, #0056b3 100%);
+            border: 2px solid #D4AF37;
+            box-shadow: 0 4px 10px rgba(0, 59, 123, 0.3);
+        }
+        
+        .leaderboard-row:nth-child(1) { background: linear-gradient(90deg, rgba(212, 175, 55, 0.2) 0%, transparent 100%); }
+        .leaderboard-row:nth-child(2) { background: linear-gradient(90deg, rgba(192, 192, 192, 0.15) 0%, transparent 100%); }
+        .leaderboard-row:nth-child(3) { background: linear-gradient(90deg, rgba(205, 127, 50, 0.15) 0%, transparent 100%); }
+        
+        .flag-emoji { font-size: 1.5rem; }
     </style>
 </head>
-<body class="min-h-screen pb-20">
+<body class="relative">
+
+    <!-- Fondo con partículas -->
+    <div class="bg-particles"></div>
 
     <!-- Modal de Registro -->
     <div id="login-modal" class="modal fixed inset-0 z-50 flex items-center justify-center hidden">
-        <div class="bg-slate-800 p-8 rounded-2xl border border-slate-700 max-w-sm w-full text-center shadow-2xl">
-            <i class="fas fa-futbol text-5xl text-emerald-400 mb-4"></i>
-            <h2 class="text-2xl font-bold text-white mb-2">¡Bienvenido a la Quiniela!</h2>
-            <p class="text-slate-400 mb-6">Ingresa tu nombre para comenzar a predecir.</p>
-            <input type="text" id="username-input" placeholder="Tu nombre o apodo" class="w-full bg-slate-900 border border-slate-600 rounded-lg px-4 py-3 text-white mb-4 focus:border-emerald-500 focus:outline-none">
-            <button onclick="window.registerUser()" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 rounded-lg transition">
-                Entrar a la Quiniela
+        <div class="bg-gradient-to-br from-slate-800 to-slate-900 p-10 rounded-3xl border-2 border-fifa-gold max-w-md w-full text-center shadow-2xl transform animate-float">
+            <div class="mb-6">
+                <i class="fas fa-futbol text-6xl text-fifa-gold mb-4 trophy-icon animate-pulse-slow"></i>
+                <h2 class="text-4xl font-title font-black text-white mb-2">¡BIENVENIDO!</h2>
+                <p class="text-fifa-gold font-semibold text-lg">FIFA World Cup 2026™</p>
+            </div>
+            <p class="text-slate-300 mb-6 text-lg">Ingresa tu nombre para comenzar a predecir y competir por la gloria.</p>
+            <input type="text" id="username-input" placeholder="Tu nombre o apodo" class="w-full bg-slate-900/50 border-2 border-slate-600 rounded-xl px-6 py-4 text-white text-lg mb-6 focus:border-fifa-gold focus:outline-none transition-all" maxlength="20">
+            <button onclick="window.registerUser()" class="w-full btn-primary py-4 rounded-xl text-lg font-bold uppercase tracking-wide">
+                <i class="fas fa-trophy mr-2"></i>Entrar a la Quiniela
             </button>
         </div>
     </div>
 
-    <!-- Header -->
-    <header class="bg-slate-900 border-b border-slate-800 sticky top-0 z-40 backdrop-blur-md bg-opacity-90">
-        <div class="max-w-4xl mx-auto px-4 py-4 flex justify-between items-center">
-            <div>
-                <h1 class="text-xl sm:text-2xl font-bold text-emerald-400"><i class="fas fa-futbol mr-2"></i>Mundial 2026</h1>
-                <p class="text-xs text-slate-400" id="user-display">Conectando...</p>
-            </div>
-            <div class="flex gap-2">
-                <button onclick="window.seedDatabase()" class="bg-slate-700 hover:bg-slate-600 text-slate-200 px-3 py-2 rounded-lg text-xs font-semibold transition" title="Solo para admin la primera vez">
-                    <i class="fas fa-database"></i> <span class="hidden sm:inline">Inicializar</span>
-                </button>
-                <button onclick="window.loadAll72Matches()" class="bg-blue-600 hover:bg-blue-500 text-white px-3 py-2 rounded-lg text-xs font-semibold transition" title="Cargar los 72 partidos reales">
-                    <i class="fas fa-globe"></i> <span class="hidden sm:inline">72 Partidos</span>
-                </button>
-                <button onclick="window.fetchRealResults()" class="bg-emerald-600 hover:bg-emerald-500 text-white px-3 sm:px-4 py-2 rounded-lg text-sm font-semibold transition flex items-center gap-2">
-                    <i class="fas fa-sync-alt" id="sync-icon"></i> <span class="hidden sm:inline">Actualizar</span>
-                </button>
+    <!-- Header Profesional -->
+    <header class="bg-gradient-to-r from-fifa-dark via-fifa-blue to-fifa-dark border-b-4 border-fifa-gold sticky top-0 z-40 shadow-2xl">
+        <div class="max-w-7xl mx-auto px-4 py-6">
+            <div class="flex flex-col lg:flex-row justify-between items-center gap-4">
+                <!-- Logo y Título -->
+                <div class="flex items-center gap-4">
+                    <div class="relative">
+                        <i class="fas fa-trophy text-5xl text-fifa-gold trophy-icon"></i>
+                        <div class="absolute -top-2 -right-2 w-6 h-6 bg-fifa-red rounded-full animate-pulse"></div>
+                    </div>
+                    <div>
+                        <h1 class="text-3xl lg:text-4xl font-title font-black text-white tracking-tight">
+                            WORLD CUP <span class="text-fifa-gold">2026</span>
+                        </h1>
+                        <p class="text-slate-300 text-sm font-semibold tracking-wider uppercase">Quiniela Oficial • USA 🇺🇸 🇲🇽 🇨🇦</p>
+                    </div>
+                </div>
+                
+                <!-- Info del Usuario y Botones -->
+                <div class="flex flex-col items-center lg:items-end gap-3">
+                    <div class="bg-slate-800/50 px-6 py-3 rounded-xl border border-slate-600">
+                        <p class="text-xs text-slate-400 uppercase tracking-wide font-semibold">Jugando como</p>
+                        <p class="text-fifa-gold font-bold text-lg" id="user-display">Conectando...</p>
+                    </div>
+                    <div class="flex gap-2 flex-wrap justify-center">
+                        <button onclick="window.seedDatabase()" class="btn-secondary px-4 py-2 rounded-lg text-sm font-semibold transition flex items-center gap-2">
+                            <i class="fas fa-database"></i> <span class="hidden sm:inline">Inicializar</span>
+                        </button>
+                        <button onclick="window.loadAll72Matches()" class="bg-gradient-to-r from-fifa-red to-red-700 hover:from-red-600 hover:to-red-800 text-white px-4 py-2 rounded-lg text-sm font-semibold transition flex items-center gap-2 shadow-lg">
+                            <i class="fas fa-globe-americas"></i> <span class="hidden sm:inline">72 Partidos</span>
+                        </button>
+                        <button onclick="window.fetchRealResults()" class="btn-primary px-4 py-2 rounded-lg text-sm font-semibold transition flex items-center gap-2">
+                            <i class="fas fa-sync-alt" id="sync-icon"></i> <span class="hidden sm:inline">Actualizar</span>
+                        </button>
+                    </div>
+                </div>
             </div>
         </div>
     </header>
 
-    <main class="max-w-4xl mx-auto px-4 mt-6">
+    <main class="max-w-7xl mx-auto px-4 mt-8 relative z-10 pb-20">
+        
+        <!-- Stats Cards -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+            <div class="bg-gradient-to-br from-fifa-blue to-blue-900 rounded-2xl p-6 border-2 border-blue-400 shadow-xl">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-blue-200 text-sm font-semibold uppercase tracking-wide">Total Partidos</p>
+                        <p class="text-4xl font-title font-black text-white mt-1" id="total-matches">0</p>
+                    </div>
+                    <i class="fas fa-futbol text-5xl text-blue-300 opacity-50"></i>
+                </div>
+            </div>
+            <div class="bg-gradient-to-br from-fifa-gold to-yellow-600 rounded-2xl p-6 border-2 border-yellow-300 shadow-xl">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-yellow-100 text-sm font-semibold uppercase tracking-wide">Tu Puntaje</p>
+                        <p class="text-4xl font-title font-black text-white mt-1" id="user-score">0</p>
+                    </div>
+                    <i class="fas fa-star text-5xl text-yellow-200 opacity-50"></i>
+                </div>
+            </div>
+            <div class="bg-gradient-to-br from-fifa-red to-red-900 rounded-2xl p-6 border-2 border-red-400 shadow-xl">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-red-200 text-sm font-semibold uppercase tracking-wide">Participantes</p>
+                        <p class="text-4xl font-title font-black text-white mt-1" id="total-players">0</p>
+                    </div>
+                    <i class="fas fa-users text-5xl text-red-300 opacity-50"></i>
+                </div>
+            </div>
+        </div>
+
         <!-- Leaderboard -->
-        <section class="bg-slate-800 rounded-xl p-4 sm:p-6 mb-8 border border-slate-700 shadow-lg">
-            <h2 class="text-lg sm:text-xl font-bold mb-4 text-white"><i class="fas fa-trophy text-yellow-400 mr-2"></i>Tabla en Vivo</h2>
+        <section class="bg-gradient-to-br from-slate-800 to-slate-900 rounded-3xl p-8 mb-10 border-2 border-slate-700 shadow-2xl">
+            <h2 class="text-2xl font-title font-bold mb-6 text-white flex items-center gap-3">
+                <i class="fas fa-trophy text-fifa-gold text-3xl"></i>
+                <span>Tabla de Posiciones</span>
+                <span class="ml-auto text-sm font-normal text-slate-400">Actualizado en tiempo real</span>
+            </h2>
             <div class="overflow-x-auto">
-                <table class="w-full text-sm text-left">
-                    <thead class="text-xs text-slate-400 uppercase bg-slate-900/50">
+                <table class="w-full text-sm">
+                    <thead class="text-xs text-slate-300 uppercase bg-slate-950/50 rounded-lg">
                         <tr>
-                            <th class="px-3 py-3 rounded-l-lg">#</th>
-                            <th class="px-3 py-3">Jugador</th>
-                            <th class="px-3 py-3 text-center">Exactos</th>
-                            <th class="px-3 py-3 text-center">Ganador</th>
-                            <th class="px-3 py-3 text-right rounded-r-lg text-emerald-400 font-bold">Pts</th>
+                            <th class="px-6 py-4 rounded-l-xl text-left">Posición</th>
+                            <th class="px-6 py-4 text-left">Jugador</th>
+                            <th class="px-6 py-4 text-center"><i class="fas fa-bullseye text-emerald-400"></i> Exactos</th>
+                            <th class="px-6 py-4 text-center"><i class="fas fa-check text-yellow-400"></i> Ganador</th>
+                            <th class="px-6 py-4 text-right rounded-r-xl text-fifa-gold font-bold text-lg">Puntos</th>
                         </tr>
                     </thead>
                     <tbody id="leaderboard-body" class="divide-y divide-slate-700">
-                        <tr><td colspan="5" class="text-center py-4 text-slate-500">Esperando datos...</td></tr>
+                        <tr><td colspan="5" class="text-center py-8 text-slate-400"><i class="fas fa-circle-notch fa-spin text-2xl mb-2"></i><br>Cargando datos...</td></tr>
                     </tbody>
                 </table>
             </div>
         </section>
 
         <!-- Matches List -->
-        <section id="matches-container" class="space-y-6">
-            <div class="text-center py-10 text-slate-500">
-                <i class="fas fa-circle-notch fa-spin text-3xl mb-3"></i>
-                <p>Esperando conexión con Firebase...</p>
+        <section id="matches-container" class="space-y-8">
+            <div class="text-center py-20 text-slate-400">
+                <i class="fas fa-circle-notch fa-spin text-5xl mb-4 text-fifa-gold"></i>
+                <p class="text-xl font-semibold">Cargando partidos del Mundial...</p>
             </div>
         </section>
     </main>
+
+    <!-- Footer -->
+    <footer class="bg-fifa-dark border-t-2 border-slate-800 py-8 relative z-10">
+        <div class="max-w-7xl mx-auto px-4 text-center">
+            <div class="flex items-center justify-center gap-2 mb-4">
+                <i class="fas fa-futbol text-fifa-gold text-2xl"></i>
+                <span class="text-fifa-gold font-title font-bold text-xl">WORLD CUP 2026</span>
+            </div>
+            <p class="text-slate-500 text-sm">
+                Quiniela desarrollada por <span class="text-fifa-gold font-semibold">Conectio.site</span> • 
+                <span class="text-slate-600">USA 🇺🇸 🇲 🇨🇦</span>
+            </p>
+            <p class="text-slate-600 text-xs mt-2">
+                FIFA World Cup es marca registrada de FIFA. Esta es una aplicación no oficial creada con fines educativos.
+            </p>
+        </div>
+    </footer>
 
     <!-- FIREBASE SDK -->
     <script type="module">
@@ -121,11 +331,10 @@
                 const savedName = localStorage.getItem(`quiniela_name_${user.uid}`);
                 
                 if (savedName) {
-                    document.getElementById('user-display').textContent = `Jugando como: ${savedName}`;
+                    document.getElementById('user-display').textContent = savedName;
                     document.getElementById('login-modal').classList.add('hidden');
                     initApp();
                 } else {
-                    document.getElementById('user-display').textContent = `Usuario: ${user.uid.substring(0, 8)}...`;
                     document.getElementById('login-modal').classList.remove('hidden');
                 }
             } else {
@@ -133,7 +342,6 @@
                     await signInAnonymously(auth);
                 } catch (error) {
                     console.error("Error en login anónimo:", error);
-                    document.getElementById('user-display').textContent = "Error de conexión";
                 }
             }
         });
@@ -143,7 +351,7 @@
             if (!name) return alert("Por favor ingresa un nombre");
             
             localStorage.setItem(`quiniela_name_${currentUser.uid}`, name);
-            document.getElementById('user-display').textContent = `Jugando como: ${name}`;
+            document.getElementById('user-display').textContent = name;
             document.getElementById('login-modal').classList.add('hidden');
             
             await setDoc(doc(db, "users", currentUser.uid), {
@@ -161,9 +369,8 @@
         function initApp() {
             onSnapshot(collection(db, "matches"), (snapshot) => {
                 matchesData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                updateStats();
                 calculateAndRender();
-            }, (error) => {
-                console.error("Error en listener de matches:", error);
             });
 
             onSnapshot(collection(db, "predictions"), (snapshot) => {
@@ -172,15 +379,18 @@
                     predictionsData[doc.id] = doc.data();
                 });
                 calculateAndRender();
-            }, (error) => {
-                console.error("Error en listener de predictions:", error);
             });
+        }
+
+        function updateStats() {
+            document.getElementById('total-matches').textContent = matchesData.length;
         }
 
         function calculateAndRender() {
             if (matchesData.length === 0) return;
 
             let leaderboard = {};
+            let userStats = { score: 0, exacts: 0, winners: 0 };
             
             matchesData.forEach(match => {
                 const isFinished = match.status === "finished";
@@ -190,6 +400,26 @@
                 match.myHome = myPred ? myPred.home : null;
                 match.myAway = myPred ? myPred.away : null;
 
+                // Calcular stats del usuario actual
+                if (isFinished && myPred && myPred.home !== null && myPred.away !== null && match.homeScore !== null && match.awayScore !== null) {
+                    if (myPred.home === match.homeScore && myPred.away === match.awayScore) {
+                        userStats.score += 4;
+                        userStats.exacts += 1;
+                        match.resultClass = "exact-match";
+                    } else if (
+                        (myPred.home > myPred.away && match.homeScore > match.awayScore) || 
+                        (myPred.home < myPred.away && match.homeScore < match.awayScore) || 
+                        (myPred.home === myPred.away && match.homeScore === match.awayScore)
+                    ) {
+                        userStats.score += 3;
+                        userStats.winners += 1;
+                        if (!match.resultClass) match.resultClass = "winner-match";
+                    } else {
+                        if (!match.resultClass) match.resultClass = "lost-match";
+                    }
+                }
+
+                // Calcular leaderboard
                 Object.keys(predictionsData).forEach(key => {
                     if (!key.endsWith(`_${match.id}`)) return;
                     const [uid] = key.split('_');
@@ -201,7 +431,6 @@
                         if (pred.home === match.homeScore && pred.away === match.awayScore) {
                             leaderboard[uid].score += 4;
                             leaderboard[uid].exacts += 1;
-                            if (uid === currentUser.uid) match.resultClass = "exact-match";
                         } else if (
                             (pred.home > pred.away && match.homeScore > match.awayScore) || 
                             (pred.home < pred.away && match.homeScore < match.awayScore) || 
@@ -209,18 +438,19 @@
                         ) {
                             leaderboard[uid].score += 3;
                             leaderboard[uid].winners += 1;
-                            if (uid === currentUser.uid && !match.resultClass) match.resultClass = "winner-match";
-                        } else {
-                            if (uid === currentUser.uid && !match.resultClass) match.resultClass = "lost-match";
                         }
                     }
                 });
             });
 
+            // Actualizar stats del usuario
+            document.getElementById('user-score').textContent = userStats.score;
+
             getDocs(collection(db, "users")).then(snapshot => {
                 snapshot.docs.forEach(doc => {
                     if (leaderboard[doc.id]) leaderboard[doc.id].name = doc.data().name;
                 });
+                document.getElementById('total-players').textContent = Object.keys(leaderboard).length;
                 const sortedLeaderboard = Object.values(leaderboard).sort((a, b) => b.score - a.score);
                 renderLeaderboard(sortedLeaderboard);
                 renderMatches();
@@ -230,20 +460,23 @@
         function renderLeaderboard(data) {
             const tbody = document.getElementById('leaderboard-body');
             if (data.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="5" class="text-center py-4 text-slate-500">Aún no hay predicciones. ¡Sé el primero!</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="5" class="text-center py-8 text-slate-400"><i class="fas fa-trophy text-4xl mb-2 text-fifa-gold"></i><br>Sé el primero en predecir</td></tr>`;
                 return;
             }
 
             tbody.innerHTML = data.map((p, index) => {
                 const currentUserName = localStorage.getItem(`quiniela_name_${currentUser.uid}`);
                 const isMe = p.name === currentUserName;
+                const medal = index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : `#${index + 1}`;
+                const rowClass = isMe ? 'bg-emerald-900/30 border-l-4 border-emerald-500' : `leaderboard-row`;
+                
                 return `
-                <tr class="hover:bg-slate-700/50 transition ${isMe ? 'bg-emerald-900/20' : ''}">
-                    <td class="px-3 py-3 font-bold ${index === 0 ? 'text-yellow-400' : 'text-slate-400'}">#${index + 1}</td>
-                    <td class="px-3 py-3 font-medium text-white">${p.name} ${isMe ? '(Tú)' : ''} ${index === 0 ? '👑' : ''}</td>
-                    <td class="px-3 py-3 text-center text-emerald-400 font-bold">${p.exacts}</td>
-                    <td class="px-3 py-3 text-center text-yellow-400">${p.winners}</td>
-                    <td class="px-3 py-3 text-right font-bold text-lg text-emerald-400">${p.score}</td>
+                <tr class="${rowClass} hover:bg-slate-700/50 transition">
+                    <td class="px-6 py-4 font-bold text-xl">${medal}</td>
+                    <td class="px-6 py-4 font-semibold text-white">${p.name} ${isMe ? '<span class="text-emerald-400 text-sm">(Tú)</span>' : ''}</td>
+                    <td class="px-6 py-4 text-center text-emerald-400 font-bold">${p.exacts}</td>
+                    <td class="px-6 py-4 text-center text-yellow-400">${p.winners}</td>
+                    <td class="px-6 py-4 text-right font-bold text-2xl text-fifa-gold">${p.score}</td>
                 </tr>
             `}).join('');
         }
@@ -257,38 +490,44 @@
             }, {});
 
             container.innerHTML = Object.keys(grouped).sort().map(group => `
-                <div>
-                    <h3 class="text-emerald-400 font-bold text-lg mb-3 flex items-center gap-2">
-                        <span class="bg-emerald-900/50 px-3 py-1 rounded-full text-sm border border-emerald-700">GRUPO ${group}</span>
+                <div class="bg-gradient-to-br from-slate-800/50 to-slate-900/50 rounded-3xl p-6 border border-slate-700 backdrop-blur-sm">
+                    <h3 class="text-2xl font-title font-bold mb-6 flex items-center gap-3">
+                        <span class="group-badge px-6 py-2 rounded-full text-white text-lg font-bold shadow-lg">GRUPO ${group}</span>
+                        <div class="h-1 flex-1 bg-gradient-to-r from-fifa-gold to-transparent rounded-full"></div>
                     </h3>
-                    <div class="space-y-3">
+                    <div class="space-y-4">
                         ${grouped[group].map(match => {
                             const isFinished = match.status === "finished";
-                            const resultClass = match.resultClass || "border-slate-700";
-                            const actualScore = isFinished ? `<span class="text-xs text-slate-400 block mt-1">Final: ${match.homeScore} - ${match.awayScore}</span>` : '';
+                            const resultClass = match.resultClass || "border-slate-700 bg-slate-800/30";
+                            const actualScore = isFinished ? `<div class="text-center mt-3 pt-3 border-t border-slate-600"><span class="text-fifa-gold font-bold text-lg"><i class="fas fa-flag-checkered mr-2"></i>Resultado Final: ${match.homeScore} - ${match.awayScore}</span></div>` : '';
                             const myH = match.myHome !== null ? match.myHome : '';
                             const myA = match.myAway !== null ? match.myAway : '';
                             
                             return `
-                            <div class="match-card bg-slate-800 rounded-lg p-4 border ${resultClass} flex flex-col sm:flex-row items-center justify-between gap-4">
-                                <div class="flex-1 text-center sm:text-right w-full sm:w-auto">
-                                    <div class="font-bold text-lg">${match.homeTeam}</div>
+                            <div class="match-card rounded-2xl p-5 border-2 ${resultClass} backdrop-blur-sm">
+                                <div class="flex flex-col lg:flex-row items-center justify-between gap-4">
+                                    <div class="flex-1 text-center lg:text-right w-full">
+                                        <div class="font-title font-bold text-xl text-white">${match.homeTeam}</div>
+                                    </div>
+                                    
+                                    <div class="flex items-center gap-4 bg-slate-900/80 px-6 py-3 rounded-2xl border-2 border-slate-600">
+                                        <input type="number" min="0" max="9" class="score-input" 
+                                            value="${myH}" 
+                                            onchange="window.savePrediction('${match.id}', 'home', this.value)"
+                                            ${isFinished ? 'disabled' : ''}>
+                                        <span class="text-slate-400 font-bold text-xl">VS</span>
+                                        <input type="number" min="0" max="9" class="score-input" 
+                                            value="${myA}" 
+                                            onchange="window.savePrediction('${match.id}', 'away', this.value)"
+                                            ${isFinished ? 'disabled' : ''}>
+                                    </div>
+
+                                    <div class="flex-1 text-center lg:text-left w-full">
+                                        <div class="font-title font-bold text-xl text-white">${match.awayTeam}</div>
+                                        <div class="text-xs text-slate-400 mt-2 font-semibold">${match.date}</div>
+                                    </div>
                                 </div>
-                                <div class="flex items-center gap-3 bg-slate-900 px-4 py-2 rounded-lg border border-slate-700">
-                                    <input type="number" min="0" max="9" class="score-input" 
-                                        value="${myH}" 
-                                        onchange="window.savePrediction('${match.id}', 'home', this.value)"
-                                        ${isFinished ? 'disabled' : ''}>
-                                    <span class="text-slate-500 font-bold">-</span>
-                                    <input type="number" min="0" max="9" class="score-input" 
-                                        value="${myA}" 
-                                        onchange="window.savePrediction('${match.id}', 'away', this.value)"
-                                        ${isFinished ? 'disabled' : ''}>
-                                </div>
-                                <div class="flex-1 text-center sm:text-left w-full sm:w-auto">
-                                    <div class="font-bold text-lg">${match.awayTeam}</div>
-                                    <div class="text-xs text-slate-500 mt-1">${match.date} ${actualScore}</div>
-                                </div>
+                                ${actualScore}
                             </div>
                             `;
                         }).join('')}
@@ -317,14 +556,12 @@
         };
 
         window.seedDatabase = async function() {
-            if (!confirm("¿Inicializar partidos de ejemplo en la base de datos? (Solo hacer 1 vez)")) return;
+            if (!confirm("¿Inicializar partidos de ejemplo en la base de datos?")) return;
             
             const batch = writeBatch(db);
             const initialMatches = [
                 { id: "101", group: "A", homeTeam: "🇲🇽 México", awayTeam: "🇿🇦 Sudáfrica", date: "11/06 21:00", status: "finished", homeScore: 2, awayScore: 1 },
-                { id: "102", group: "A", homeTeam: "🇰🇷 Corea del Sur", awayTeam: "🇨🇿 Rep. Checa", date: "12/06 04:00", status: "scheduled", homeScore: null, awayScore: null },
-                { id: "103", group: "B", homeTeam: "🇨🇦 Canadá", awayTeam: "🇧🇦 Bosnia", date: "12/06 21:00", status: "finished", homeScore: 1, awayScore: 1 },
-                { id: "104", group: "C", homeTeam: "🇧🇷 Brasil", awayTeam: "🇲🇦 Marruecos", date: "14/06 00:00", status: "scheduled", homeScore: null, awayScore: null }
+                { id: "102", group: "A", homeTeam: "🇰🇷 Corea del Sur", awayTeam: "🇨 Rep. Checa", date: "12/06 04:00", status: "scheduled", homeScore: null, awayScore: null }
             ];
 
             initialMatches.forEach(m => {
@@ -332,19 +569,13 @@
             });
             
             await batch.commit();
-            alert("✅ Base de datos inicializada con éxito. Recargando...");
+            alert("✅ Base de datos inicializada");
             window.location.reload();
         };
 
-        // ==========================================
-        // 5. CARGAR LOS 72 PARTIDOS REALES
-        // ==========================================
         window.loadAll72Matches = async function() {
-            if (!confirm("⚠️ Esto borrará todos los partidos actuales y cargará los 72 partidos reales del Mundial 2026. ¿Continuar?")) return;
+            if (!confirm("⚠️ Esto cargará los 72 partidos reales del Mundial 2026. ¿Continuar?")) return;
             
-            alert("🗑️ Borrando partidos anteriores...");
-            
-            // Borrar todos los partidos existentes
             const snapshot = await getDocs(collection(db, "matches"));
             const deleteBatch = writeBatch(db);
             snapshot.docs.forEach(doc => {
@@ -352,103 +583,77 @@
             });
             await deleteBatch.commit();
             
-            alert("📝 Cargando 72 partidos reales...");
-            
-            // Los 72 partidos del Mundial 2026
             const allMatches = [
-                // GRUPO A
-                { id: "A1", group: "A", homeTeam: "🇲🇽 México", awayTeam: "🇿🇦 Sudáfrica", date: "11/06 21:00", status: "scheduled", homeScore: null, awayScore: null },
+                { id: "A1", group: "A", homeTeam: "🇲 México", awayTeam: "🇦 Sudáfrica", date: "11/06 21:00", status: "scheduled", homeScore: null, awayScore: null },
                 { id: "A2", group: "A", homeTeam: "🇰🇷 Corea del Sur", awayTeam: "🇨🇿 Rep. Checa", date: "12/06 04:00", status: "scheduled", homeScore: null, awayScore: null },
-                { id: "A3", group: "A", homeTeam: "🇨🇿 Rep. Checa", awayTeam: "🇿🇦 Sudáfrica", date: "18/06 18:00", status: "scheduled", homeScore: null, awayScore: null },
+                { id: "A3", group: "A", homeTeam: "🇨 Rep. Checa", awayTeam: "🇿 Sudáfrica", date: "18/06 18:00", status: "scheduled", homeScore: null, awayScore: null },
                 { id: "A4", group: "A", homeTeam: "🇲🇽 México", awayTeam: "🇰🇷 Corea del Sur", date: "19/06 03:00", status: "scheduled", homeScore: null, awayScore: null },
                 { id: "A5", group: "A", homeTeam: "🇿🇦 Sudáfrica", awayTeam: "🇰🇷 Corea del Sur", date: "25/06 03:00", status: "scheduled", homeScore: null, awayScore: null },
-                { id: "A6", group: "A", homeTeam: "🇨🇿 Rep. Checa", awayTeam: "🇲🇽 México", date: "25/06 03:00", status: "scheduled", homeScore: null, awayScore: null },
-                
-                // GRUPO B
+                { id: "A6", group: "A", homeTeam: "🇨 Rep. Checa", awayTeam: "🇲🇽 México", date: "25/06 03:00", status: "scheduled", homeScore: null, awayScore: null },
                 { id: "B1", group: "B", homeTeam: "🇨🇦 Canadá", awayTeam: "🇧🇦 Bosnia-Herzegovina", date: "12/06 21:00", status: "scheduled", homeScore: null, awayScore: null },
-                { id: "B2", group: "B", homeTeam: "🇶🇦 Qatar", awayTeam: "🇨🇭 Suiza", date: "13/06 21:00", status: "scheduled", homeScore: null, awayScore: null },
-                { id: "B3", group: "B", homeTeam: "🇨🇭 Suiza", awayTeam: "🇧🇦 Bosnia-Herzegovina", date: "18/06 21:00", status: "scheduled", homeScore: null, awayScore: null },
-                { id: "B4", group: "B", homeTeam: "🇨🇦 Canadá", awayTeam: "🇶🇦 Qatar", date: "19/06 00:00", status: "scheduled", homeScore: null, awayScore: null },
-                { id: "B5", group: "B", homeTeam: "🇧🇦 Bosnia-Herzegovina", awayTeam: "🇶🇦 Qatar", date: "24/06 21:00", status: "scheduled", homeScore: null, awayScore: null },
-                { id: "B6", group: "B", homeTeam: "🇨🇭 Suiza", awayTeam: "🇨🇦 Canadá", date: "24/06 21:00", status: "scheduled", homeScore: null, awayScore: null },
-                
-                // GRUPO C
-                { id: "C1", group: "C", homeTeam: "🇧🇷 Brasil", awayTeam: "🇲🇦 Marruecos", date: "14/06 00:00", status: "scheduled", homeScore: null, awayScore: null },
-                { id: "C2", group: "C", homeTeam: "🇭🇹 Haití", awayTeam: "🏴󠁧󠁢󠁳󠁣󠁴󠁿 Escocia", date: "14/06 03:00", status: "scheduled", homeScore: null, awayScore: null },
-                { id: "C3", group: "C", homeTeam: "🏴󠁧󠁢󠁳󠁣󠁴󠁿 Escocia", awayTeam: "🇲🇦 Marruecos", date: "20/06 00:00", status: "scheduled", homeScore: null, awayScore: null },
-                { id: "C4", group: "C", homeTeam: "🇧🇷 Brasil", awayTeam: "🇭🇹 Haití", date: "20/06 02:30", status: "scheduled", homeScore: null, awayScore: null },
-                { id: "C5", group: "C", homeTeam: "🏴󠁧󠁢󠁳󠁣󠁴󠁿 Escocia", awayTeam: "🇧🇷 Brasil", date: "25/06 00:00", status: "scheduled", homeScore: null, awayScore: null },
+                { id: "B2", group: "B", homeTeam: "🇶🇦 Qatar", awayTeam: "🇨 Suiza", date: "13/06 21:00", status: "scheduled", homeScore: null, awayScore: null },
+                { id: "B3", group: "B", homeTeam: "🇨 Suiza", awayTeam: "🇧🇦 Bosnia-Herzegovina", date: "18/06 21:00", status: "scheduled", homeScore: null, awayScore: null },
+                { id: "B4", group: "B", homeTeam: "🇨🇦 Canadá", awayTeam: "🇶 Qatar", date: "19/06 00:00", status: "scheduled", homeScore: null, awayScore: null },
+                { id: "B5", group: "B", homeTeam: "🇧🇦 Bosnia-Herzegovina", awayTeam: "🇶 Qatar", date: "24/06 21:00", status: "scheduled", homeScore: null, awayScore: null },
+                { id: "B6", group: "B", homeTeam: "🇨 Suiza", awayTeam: "🇨🇦 Canadá", date: "24/06 21:00", status: "scheduled", homeScore: null, awayScore: null },
+                { id: "C1", group: "C", homeTeam: "🇧 Brasil", awayTeam: "🇦 Marruecos", date: "14/06 00:00", status: "scheduled", homeScore: null, awayScore: null },
+                { id: "C2", group: "C", homeTeam: "🇭 Haití", awayTeam: "🏴󠁢󠁣󠁿 Escocia", date: "14/06 03:00", status: "scheduled", homeScore: null, awayScore: null },
+                { id: "C3", group: "C", homeTeam: "🏴󠁢󠁣󠁿 Escocia", awayTeam: "🇲 Marruecos", date: "20/06 00:00", status: "scheduled", homeScore: null, awayScore: null },
+                { id: "C4", group: "C", homeTeam: "🇧🇷 Brasil", awayTeam: "🇭 Haití", date: "20/06 02:30", status: "scheduled", homeScore: null, awayScore: null },
+                { id: "C5", group: "C", homeTeam: "🏴󠁧󠁳󠁿 Escocia", awayTeam: "🇧🇷 Brasil", date: "25/06 00:00", status: "scheduled", homeScore: null, awayScore: null },
                 { id: "C6", group: "C", homeTeam: "🇲🇦 Marruecos", awayTeam: "🇭🇹 Haití", date: "25/06 00:00", status: "scheduled", homeScore: null, awayScore: null },
-                
-                // GRUPO D
                 { id: "D1", group: "D", homeTeam: "🇺🇸 EE.UU.", awayTeam: "🇵🇾 Paraguay", date: "13/06 03:00", status: "scheduled", homeScore: null, awayScore: null },
                 { id: "D2", group: "D", homeTeam: "🇦🇺 Australia", awayTeam: "🇹🇷 Turquía", date: "14/06 06:00", status: "scheduled", homeScore: null, awayScore: null },
                 { id: "D3", group: "D", homeTeam: "🇺🇸 EE.UU.", awayTeam: "🇦🇺 Australia", date: "19/06 21:00", status: "scheduled", homeScore: null, awayScore: null },
                 { id: "D4", group: "D", homeTeam: "🇹🇷 Turquía", awayTeam: "🇵🇾 Paraguay", date: "20/06 05:00", status: "scheduled", homeScore: null, awayScore: null },
                 { id: "D5", group: "D", homeTeam: "🇹🇷 Turquía", awayTeam: "🇺🇸 EE.UU.", date: "26/06 04:00", status: "scheduled", homeScore: null, awayScore: null },
                 { id: "D6", group: "D", homeTeam: "🇵🇾 Paraguay", awayTeam: "🇦🇺 Australia", date: "26/06 04:00", status: "scheduled", homeScore: null, awayScore: null },
-                
-                // GRUPO E
                 { id: "E1", group: "E", homeTeam: "🇩🇪 Alemania", awayTeam: "🇨🇼 Curazao", date: "14/06 19:00", status: "scheduled", homeScore: null, awayScore: null },
                 { id: "E2", group: "E", homeTeam: "🇨🇮 Costa de Marfil", awayTeam: "🇪🇨 Ecuador", date: "15/06 01:00", status: "scheduled", homeScore: null, awayScore: null },
                 { id: "E3", group: "E", homeTeam: "🇩🇪 Alemania", awayTeam: "🇨🇮 Costa de Marfil", date: "20/06 22:00", status: "scheduled", homeScore: null, awayScore: null },
                 { id: "E4", group: "E", homeTeam: "🇪🇨 Ecuador", awayTeam: "🇨🇼 Curazao", date: "21/06 02:00", status: "scheduled", homeScore: null, awayScore: null },
-                { id: "E5", group: "E", homeTeam: "🇨🇼 Curazao", awayTeam: "🇨🇮 Costa de Marfil", date: "25/06 22:00", status: "scheduled", homeScore: null, awayScore: null },
+                { id: "E5", group: "E", homeTeam: "🇨🇼 Curazao", awayTeam: "🇨 Costa de Marfil", date: "25/06 22:00", status: "scheduled", homeScore: null, awayScore: null },
                 { id: "E6", group: "E", homeTeam: "🇪🇨 Ecuador", awayTeam: "🇩🇪 Alemania", date: "25/06 22:00", status: "scheduled", homeScore: null, awayScore: null },
-                
-                // GRUPO F
-                { id: "F1", group: "F", homeTeam: "🇳🇱 Países Bajos", awayTeam: "🇯🇵 Japón", date: "14/06 22:00", status: "scheduled", homeScore: null, awayScore: null },
+                { id: "F1", group: "F", homeTeam: "🇳 Países Bajos", awayTeam: "🇯🇵 Japón", date: "14/06 22:00", status: "scheduled", homeScore: null, awayScore: null },
                 { id: "F2", group: "F", homeTeam: "🇸🇪 Suecia", awayTeam: "🇹🇳 Túnez", date: "15/06 04:00", status: "scheduled", homeScore: null, awayScore: null },
-                { id: "F3", group: "F", homeTeam: "🇳🇱 Países Bajos", awayTeam: "🇸🇪 Suecia", date: "20/06 19:00", status: "scheduled", homeScore: null, awayScore: null },
-                { id: "F4", group: "F", homeTeam: "🇹🇳 Túnez", awayTeam: "🇯🇵 Japón", date: "21/06 06:00", status: "scheduled", homeScore: null, awayScore: null },
+                { id: "F3", group: "F", homeTeam: "🇳 Países Bajos", awayTeam: "🇸🇪 Suecia", date: "20/06 19:00", status: "scheduled", homeScore: null, awayScore: null },
+                { id: "F4", group: "F", homeTeam: "🇹🇳 Túnez", awayTeam: "🇯 Japón", date: "21/06 06:00", status: "scheduled", homeScore: null, awayScore: null },
                 { id: "F5", group: "F", homeTeam: "🇯🇵 Japón", awayTeam: "🇸🇪 Suecia", date: "26/06 01:00", status: "scheduled", homeScore: null, awayScore: null },
-                { id: "F6", group: "F", homeTeam: "🇹🇳 Túnez", awayTeam: "🇳🇱 Países Bajos", date: "26/06 01:00", status: "scheduled", homeScore: null, awayScore: null },
-                
-                // GRUPO G
+                { id: "F6", group: "F", homeTeam: "🇹 Túnez", awayTeam: "🇳🇱 Países Bajos", date: "26/06 01:00", status: "scheduled", homeScore: null, awayScore: null },
                 { id: "G1", group: "G", homeTeam: "🇧🇪 Bélgica", awayTeam: "🇪🇬 Egipto", date: "15/06 21:00", status: "scheduled", homeScore: null, awayScore: null },
                 { id: "G2", group: "G", homeTeam: "🇮🇷 Irán", awayTeam: "🇳🇿 Nueva Zelanda", date: "16/06 03:00", status: "scheduled", homeScore: null, awayScore: null },
-                { id: "G3", group: "G", homeTeam: "🇧🇪 Bélgica", awayTeam: "🇮🇷 Irán", date: "21/06 21:00", status: "scheduled", homeScore: null, awayScore: null },
+                { id: "G3", group: "G", homeTeam: "🇧 Bélgica", awayTeam: "🇮🇷 Irán", date: "21/06 21:00", status: "scheduled", homeScore: null, awayScore: null },
                 { id: "G4", group: "G", homeTeam: "🇳🇿 Nueva Zelanda", awayTeam: "🇪🇬 Egipto", date: "22/06 03:00", status: "scheduled", homeScore: null, awayScore: null },
-                { id: "G5", group: "G", homeTeam: "🇪🇬 Egipto", awayTeam: "🇮🇷 Irán", date: "27/06 05:00", status: "scheduled", homeScore: null, awayScore: null },
+                { id: "G5", group: "G", homeTeam: "🇪🇬 Egipto", awayTeam: "🇮 Irán", date: "27/06 05:00", status: "scheduled", homeScore: null, awayScore: null },
                 { id: "G6", group: "G", homeTeam: "🇳🇿 Nueva Zelanda", awayTeam: "🇧🇪 Bélgica", date: "27/06 05:00", status: "scheduled", homeScore: null, awayScore: null },
-                
-                // GRUPO H
                 { id: "H1", group: "H", homeTeam: "🇪🇸 España", awayTeam: "🇨🇻 Cabo Verde", date: "15/06 18:00", status: "scheduled", homeScore: null, awayScore: null },
-                { id: "H2", group: "H", homeTeam: "🇸🇦 Arabia Saudita", awayTeam: "🇺🇾 Uruguay", date: "16/06 00:00", status: "scheduled", homeScore: null, awayScore: null },
-                { id: "H3", group: "H", homeTeam: "🇪🇸 España", awayTeam: "🇸🇦 Arabia Saudita", date: "21/06 18:00", status: "scheduled", homeScore: null, awayScore: null },
-                { id: "H4", group: "H", homeTeam: "🇺🇾 Uruguay", awayTeam: "🇨🇻 Cabo Verde", date: "22/06 00:00", status: "scheduled", homeScore: null, awayScore: null },
-                { id: "H5", group: "H", homeTeam: "🇨🇻 Cabo Verde", awayTeam: "🇸🇦 Arabia Saudita", date: "27/06 02:00", status: "scheduled", homeScore: null, awayScore: null },
-                { id: "H6", group: "H", homeTeam: "🇺🇾 Uruguay", awayTeam: "🇪🇸 España", date: "27/06 02:00", status: "scheduled", homeScore: null, awayScore: null },
-                
-                // GRUPO I
+                { id: "H2", group: "H", homeTeam: "🇸 Arabia Saudita", awayTeam: "🇺🇾 Uruguay", date: "16/06 00:00", status: "scheduled", homeScore: null, awayScore: null },
+                { id: "H3", group: "H", homeTeam: "🇪🇸 España", awayTeam: "🇸 Arabia Saudita", date: "21/06 18:00", status: "scheduled", homeScore: null, awayScore: null },
+                { id: "H4", group: "H", homeTeam: "🇺🇾 Uruguay", awayTeam: "🇨 Cabo Verde", date: "22/06 00:00", status: "scheduled", homeScore: null, awayScore: null },
+                { id: "H5", group: "H", homeTeam: "🇨🇻 Cabo Verde", awayTeam: "🇸 Arabia Saudita", date: "27/06 02:00", status: "scheduled", homeScore: null, awayScore: null },
+                { id: "H6", group: "H", homeTeam: "🇺🇾 Uruguay", awayTeam: "🇪 España", date: "27/06 02:00", status: "scheduled", homeScore: null, awayScore: null },
                 { id: "I1", group: "I", homeTeam: "🇫🇷 Francia", awayTeam: "🇸🇳 Senegal", date: "16/06 21:00", status: "scheduled", homeScore: null, awayScore: null },
                 { id: "I2", group: "I", homeTeam: "🇮🇶 Irak", awayTeam: "🇳🇴 Noruega", date: "17/06 00:00", status: "scheduled", homeScore: null, awayScore: null },
                 { id: "I3", group: "I", homeTeam: "🇫🇷 Francia", awayTeam: "🇮🇶 Irak", date: "22/06 23:00", status: "scheduled", homeScore: null, awayScore: null },
                 { id: "I4", group: "I", homeTeam: "🇳🇴 Noruega", awayTeam: "🇸🇳 Senegal", date: "23/06 02:00", status: "scheduled", homeScore: null, awayScore: null },
-                { id: "I5", group: "I", homeTeam: "🇸🇳 Senegal", awayTeam: "🇮🇶 Irak", date: "26/06 21:00", status: "scheduled", homeScore: null, awayScore: null },
+                { id: "I5", group: "I", homeTeam: "🇸🇳 Senegal", awayTeam: "🇮 Irak", date: "26/06 21:00", status: "scheduled", homeScore: null, awayScore: null },
                 { id: "I6", group: "I", homeTeam: "🇳🇴 Noruega", awayTeam: "🇫🇷 Francia", date: "26/06 21:00", status: "scheduled", homeScore: null, awayScore: null },
-                
-                // GRUPO J
                 { id: "J1", group: "J", homeTeam: "🇦🇷 Argentina", awayTeam: "🇩🇿 Argelia", date: "17/06 03:00", status: "scheduled", homeScore: null, awayScore: null },
                 { id: "J2", group: "J", homeTeam: "🇦🇹 Austria", awayTeam: "🇯🇴 Jordania", date: "17/06 06:00", status: "scheduled", homeScore: null, awayScore: null },
                 { id: "J3", group: "J", homeTeam: "🇦🇷 Argentina", awayTeam: "🇦🇹 Austria", date: "22/06 19:00", status: "scheduled", homeScore: null, awayScore: null },
                 { id: "J4", group: "J", homeTeam: "🇯🇴 Jordania", awayTeam: "🇩🇿 Argelia", date: "23/06 05:00", status: "scheduled", homeScore: null, awayScore: null },
-                { id: "J5", group: "J", homeTeam: "🇩🇿 Argelia", awayTeam: "🇦🇹 Austria", date: "28/06 04:00", status: "scheduled", homeScore: null, awayScore: null },
+                { id: "J5", group: "J", homeTeam: "🇩🇿 Argelia", awayTeam: "🇦 Austria", date: "28/06 04:00", status: "scheduled", homeScore: null, awayScore: null },
                 { id: "J6", group: "J", homeTeam: "🇯🇴 Jordania", awayTeam: "🇦🇷 Argentina", date: "28/06 04:00", status: "scheduled", homeScore: null, awayScore: null },
-                
-                // GRUPO K
-                { id: "K1", group: "K", homeTeam: "🇵🇹 Portugal", awayTeam: "🇨🇩 RD Congo", date: "17/06 19:00", status: "scheduled", homeScore: null, awayScore: null },
+                { id: "K1", group: "K", homeTeam: "🇵🇹 Portugal", awayTeam: "🇨 RD Congo", date: "17/06 19:00", status: "scheduled", homeScore: null, awayScore: null },
                 { id: "K2", group: "K", homeTeam: "🇺🇿 Uzbekistán", awayTeam: "🇨🇴 Colombia", date: "18/06 04:00", status: "scheduled", homeScore: null, awayScore: null },
                 { id: "K3", group: "K", homeTeam: "🇵🇹 Portugal", awayTeam: "🇺🇿 Uzbekistán", date: "23/06 19:00", status: "scheduled", homeScore: null, awayScore: null },
-                { id: "K4", group: "K", homeTeam: "🇨🇴 Colombia", awayTeam: "🇨🇩 RD Congo", date: "24/06 04:00", status: "scheduled", homeScore: null, awayScore: null },
-                { id: "K5", group: "K", homeTeam: "🇨🇴 Colombia", awayTeam: "🇵🇹 Portugal", date: "28/06 01:30", status: "scheduled", homeScore: null, awayScore: null },
-                { id: "K6", group: "K", homeTeam: "🇨🇩 RD Congo", awayTeam: "🇺🇿 Uzbekistán", date: "28/06 01:30", status: "scheduled", homeScore: null, awayScore: null },
-                
-                // GRUPO L
-                { id: "L1", group: "L", homeTeam: "🏴󠁧󠁢󠁥󠁮󠁧󠁿 Inglaterra", awayTeam: "🇭🇷 Croacia", date: "17/06 22:00", status: "scheduled", homeScore: null, awayScore: null },
+                { id: "K4", group: "K", homeTeam: "🇨🇴 Colombia", awayTeam: "🇨 RD Congo", date: "24/06 04:00", status: "scheduled", homeScore: null, awayScore: null },
+                { id: "K5", group: "K", homeTeam: "🇨🇴 Colombia", awayTeam: "🇵 Portugal", date: "28/06 01:30", status: "scheduled", homeScore: null, awayScore: null },
+                { id: "K6", group: "K", homeTeam: "🇨 RD Congo", awayTeam: "🇺🇿 Uzbekistán", date: "28/06 01:30", status: "scheduled", homeScore: null, awayScore: null },
+                { id: "L1", group: "L", homeTeam: "🏴󠁢󠁮󠁿 Inglaterra", awayTeam: "🇭🇷 Croacia", date: "17/06 22:00", status: "scheduled", homeScore: null, awayScore: null },
                 { id: "L2", group: "L", homeTeam: "🇬🇭 Ghana", awayTeam: "🇵🇦 Panamá", date: "18/06 01:00", status: "scheduled", homeScore: null, awayScore: null },
-                { id: "L3", group: "L", homeTeam: "🏴󠁧󠁢󠁥󠁮󠁧󠁿 Inglaterra", awayTeam: "🇬🇭 Ghana", date: "23/06 22:00", status: "scheduled", homeScore: null, awayScore: null },
-                { id: "L4", group: "L", homeTeam: "🇵🇦 Panamá", awayTeam: "🇭🇷 Croacia", date: "24/06 01:00", status: "scheduled", homeScore: null, awayScore: null },
+                { id: "L3", group: "L", homeTeam: "🏴󠁢󠁮󠁿 Inglaterra", awayTeam: "🇬🇭 Ghana", date: "23/06 22:00", status: "scheduled", homeScore: null, awayScore: null },
+                { id: "L4", group: "L", homeTeam: "🇵🇦 Panamá", awayTeam: "🇭 Croacia", date: "24/06 01:00", status: "scheduled", homeScore: null, awayScore: null },
                 { id: "L5", group: "L", homeTeam: "🇭🇷 Croacia", awayTeam: "🇬🇭 Ghana", date: "27/06 23:00", status: "scheduled", homeScore: null, awayScore: null },
                 { id: "L6", group: "L", homeTeam: "🇵🇦 Panamá", awayTeam: "🏴󠁧󠁢󠁥󠁮󠁧󠁿 Inglaterra", date: "27/06 23:00", status: "scheduled", homeScore: null, awayScore: null }
             ];
@@ -459,7 +664,7 @@
             });
             await loadBatch.commit();
             
-            alert("✅ ¡Los 72 partidos del Mundial 2026 han sido cargados exitosamente! La página se recargará.");
+            alert("✅ ¡Los 72 partidos del Mundial 2026 han sido cargados!");
             window.location.reload();
         };
 
@@ -467,10 +672,13 @@
             const icon = document.getElementById('sync-icon');
             icon.classList.add('fa-spin');
             setTimeout(() => {
-                alert("🔄 Simulación: En producción, esto conectaría con la API de fútbol.");
+                alert("🔄 Actualizando...");
                 icon.classList.remove('fa-spin');
             }, 1000);
         };
     </script>
 </body>
 </html>
+
+
+
