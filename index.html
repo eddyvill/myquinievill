@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>FIFA World Cup 2026™ Quiniela | Softandnet</title>
+    <title>FIFA World Cup 2026™ Quiniela | Conectio</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800;900&family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
@@ -20,32 +20,24 @@
     <style>
         body { font-family: 'Inter', sans-serif; background: linear-gradient(135deg, #0a0e27 0%, #1a1f4d 50%, #0f172a 100%); color: #e2e8f0; min-height: 100vh; padding-bottom: 80px; }
         .font-title { font-family: 'Montserrat', sans-serif; }
-        
-        /* Ocultar scrollbar en las pestañas pero permitir scroll */
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-
         .match-card { transition: all 0.3s ease; backdrop-filter: blur(10px); }
-        
         .score-input { 
             width: 2.8rem; height: 2.8rem; text-align: center; 
             background: #0f172a; border: 2px solid #334155; color: white; 
-            border-radius: 0.5rem; font-size: 1.1rem; font-weight: bold;
-            transition: all 0.2s ease;
+            border-radius: 0.5rem; font-size: 1.1rem; font-weight: bold; transition: all 0.2s ease;
         }
         @media (min-width: 640px) { .score-input { width: 3.5rem; height: 3.5rem; font-size: 1.25rem; } }
-        
         .score-input:focus { outline: none; border-color: #D4AF37; box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.3); transform: scale(1.05); }
-        .score-input:disabled { opacity: 0.5; cursor: not-allowed; background: #1e293b; }
-        
+        .score-input:disabled { opacity: 0.4; cursor: not-allowed; background: #1e293b; border-color: #475569; }
         .exact-match { background: rgba(16, 185, 129, 0.15); border-left: 4px solid #10b981; }
         .winner-match { background: rgba(234, 179, 8, 0.15); border-left: 4px solid #eab308; }
         .lost-match { background: rgba(239, 68, 68, 0.1); border-left: 4px solid #ef4444; }
-        
         .tab-btn { transition: all 0.2s; white-space: nowrap; }
         .tab-btn.active { background: #D4AF37; color: #0a0e27; font-weight: 800; border-color: #D4AF37; }
-        
         .modal { background: rgba(10, 14, 39, 0.95); backdrop-filter: blur(10px); }
+        .locked-badge { background: rgba(239, 68, 68, 0.2); color: #fca5a5; border: 1px solid #ef4444; }
     </style>
 </head>
 <body>
@@ -80,7 +72,6 @@
     </header>
 
     <main class="max-w-4xl mx-auto px-3 mt-4">
-        
         <!-- Stats Rápidas -->
         <div class="grid grid-cols-2 gap-3 mb-4">
             <div class="bg-slate-800/50 rounded-xl p-3 border border-slate-700 text-center">
@@ -90,17 +81,15 @@
             <div class="bg-slate-800/50 rounded-xl p-3 border border-slate-700 text-center">
                 <p class="text-xs text-slate-400 uppercase">Jugadores</p>
                 <p class="text-2xl font-title font-black text-white" id="total-players">0</p>
-            </div
-        </div>
-
-        <!-- PESTAÑAS DE GRUPOS (Navegación Móvil) -->
-        <div class="sticky top-[60px] z-30 bg-fifa-dark/95 backdrop-blur-md py-2 border-b border-slate-700 mb-4">
-            <div class="flex overflow-x-auto gap-2 px-2 no-scrollbar" id="group-tabs">
-                <!-- Se generan con JS: Grupo A, B, C... -->
             </div>
         </div>
 
-        <!-- Contenedor de Partidos (Se filtra por pestaña) -->
+        <!-- PESTAÑAS DE GRUPOS -->
+        <div class="sticky top-[60px] z-30 bg-fifa-dark/95 backdrop-blur-md py-2 border-b border-slate-700 mb-4">
+            <div class="flex overflow-x-auto gap-2 px-2 no-scrollbar" id="group-tabs"></div>
+        </div>
+
+        <!-- Contenedor de Partidos -->
         <section id="matches-container" class="space-y-3">
             <div class="text-center py-10 text-slate-400">
                 <i class="fas fa-circle-notch fa-spin text-3xl mb-3 text-fifa-gold"></i>
@@ -112,10 +101,9 @@
         <button onclick="window.toggleLeaderboard()" class="fixed bottom-6 right-6 bg-fifa-gold text-fifa-dark w-14 h-14 rounded-full shadow-2xl flex items-center justify-center text-2xl z-40 hover:scale-110 transition border-2 border-white">
             <i class="fas fa-list-ol"></i>
         </button>
-
     </main>
 
-    <!-- Modal de Tabla de Posiciones (Oculto por defecto) -->
+    <!-- Modal de Tabla de Posiciones -->
     <div id="leaderboard-modal" class="modal fixed inset-0 z-50 flex items-end sm:items-center justify-center hidden p-0 sm:p-4">
         <div class="bg-slate-900 w-full sm:max-w-md sm:rounded-2xl rounded-t-2xl border border-slate-700 shadow-2xl max-h-[80vh] flex flex-col">
             <div class="p-4 border-b border-slate-700 flex justify-between items-center">
@@ -163,7 +151,7 @@
         let currentUser = null;
         let matchesData = [];
         let predictionsData = {};
-        let activeGroup = 'A'; // Grupo por defecto
+        let activeGroup = 'A';
 
         onAuthStateChanged(auth, async (user) => {
             if (user) {
@@ -263,7 +251,7 @@
                 document.getElementById('total-players').textContent = Object.keys(leaderboard).length;
                 const sorted = Object.values(leaderboard).sort((a, b) => b.score - a.score);
                 renderLeaderboard(sorted);
-                renderMatches(); // Re-render para aplicar colores
+                renderMatches(); 
             });
         }
 
@@ -285,6 +273,7 @@
         function renderMatches() {
             const container = document.getElementById('matches-container');
             const groupMatches = matchesData.filter(m => m.group === activeGroup);
+            const now = new Date();
             
             if (groupMatches.length === 0) {
                 container.innerHTML = `<div class="text-center py-10 text-slate-500">No hay partidos en este grupo aún.</div>`;
@@ -292,34 +281,44 @@
             }
 
             container.innerHTML = groupMatches.map(match => {
-                const isFinished = match.status === "finished";
+                // LÓGICA DE BLOQUEO POR HORA
+                const matchTime = new Date(match.datetime);
+                const isLocked = match.status === "finished" || now >= matchTime;
+                
                 const resultClass = match.resultClass || "border-slate-700 bg-slate-800/40";
-                const actualScore = isFinished ? `<div class="mt-2 pt-2 border-t border-slate-700 text-center"><span class="text-fifa-gold text-xs font-bold uppercase"><i class="fas fa-flag-checkered mr-1"></i> Final: ${match.homeScore} - ${match.awayScore}</span></div>` : '';
+                const actualScore = match.status === "finished" ? `<div class="mt-2 pt-2 border-t border-slate-700 text-center"><span class="text-fifa-gold text-xs font-bold uppercase"><i class="fas fa-flag-checkered mr-1"></i> Final: ${match.homeScore} - ${match.awayScore}</span></div>` : '';
                 const myH = match.myHome !== null ? match.myHome : '';
                 const myA = match.myAway !== null ? match.myAway : '';
                 
+                const lockBadge = isLocked ? `<div class="mt-2 text-center"><span class="locked-badge text-[10px] sm:text-xs font-bold uppercase px-2 py-1 rounded inline-flex items-center gap-1"><i class="fas fa-lock"></i> Pronósticos cerrados</span></div>` : '';
+                
+                const clearBtn = !isLocked && (match.myHome !== null || match.myAway !== null) ? `
+                    <button onclick="window.clearPrediction('${match.id}')" class="mt-3 w-full text-xs text-red-400 hover:text-red-300 hover:bg-red-900/20 py-2 rounded-lg transition flex items-center justify-center gap-2 border border-red-900/30">
+                        <i class="fas fa-trash-alt"></i> Borrar mi pronóstico
+                    </button>
+                ` : '';
+
                 return `
                 <div class="match-card rounded-xl p-3 border-2 ${resultClass}">
                     <div class="flex items-center justify-between gap-2">
                         <div class="flex-1 text-right min-w-0">
                             <div class="font-title font-bold text-sm sm:text-base text-white truncate">${match.homeTeam}</div>
                         </div>
-                        
                         <div class="flex items-center gap-1 sm:gap-2 bg-slate-900 px-2 py-2 sm:px-3 sm:py-3 rounded-lg border border-slate-600 shrink-0">
                             <input type="number" inputmode="numeric" pattern="[0-9]*" class="score-input" 
-                                value="${myH}" onchange="window.savePrediction('${match.id}', 'home', this.value)" ${isFinished ? 'disabled' : ''}>
+                                value="${myH}" onchange="window.savePrediction('${match.id}', 'home', this.value)" ${isLocked ? 'disabled' : ''}>
                             <span class="text-slate-500 font-bold text-xs sm:text-sm">-</span>
                             <input type="number" inputmode="numeric" pattern="[0-9]*" class="score-input" 
-                                value="${myA}" onchange="window.savePrediction('${match.id}', 'away', this.value)" ${isFinished ? 'disabled' : ''}>
+                                value="${myA}" onchange="window.savePrediction('${match.id}', 'away', this.value)" ${isLocked ? 'disabled' : ''}>
                         </div>
-
                         <div class="flex-1 text-left min-w-0">
                             <div class="font-title font-bold text-sm sm:text-base text-white truncate">${match.awayTeam}</div>
                         </div>
                     </div>
-                    <div class="text-center mt-2">
-                        <span class="text-[10px] sm:text-xs text-slate-400 font-semibold bg-slate-900/50 px-2 py-1 rounded"><i class="far fa-clock mr-1"></i>${match.date}</span>
-                    </div>
+                    
+                    ${!isLocked ? `<div class="text-center mt-2"><span class="text-[10px] sm:text-xs text-slate-400 font-semibold bg-slate-900/50 px-2 py-1 rounded"><i class="far fa-clock mr-1"></i>${match.date}</span></div>` : ''}
+                    ${lockBadge}
+                    ${clearBtn}
                     ${actualScore}
                 </div>`;
             }).join('');
@@ -334,21 +333,117 @@
             await setDoc(doc(db, "predictions", predKey), { userId: currentUser.uid, matchId, home: newHome, away: newAway, updatedAt: new Date() });
         };
 
+        // NUEVA FUNCIÓN: BORRAR PRONÓSTICO
+        window.clearPrediction = async function(matchId) {
+            if (!confirm("¿Estás seguro de borrar tu pronóstico para este partido?")) return;
+            const predKey = `${currentUser.uid}_${matchId}`;
+            await deleteDoc(doc(db, "predictions", predKey));
+            // El onSnapshot se encargará de actualizar la UI automáticamente
+        };
+
         window.toggleLeaderboard = function() {
-            const modal = document.getElementById('leaderboard-modal');
-            modal.classList.toggle('hidden');
+            document.getElementById('leaderboard-modal').classList.toggle('hidden');
         };
 
         window.loadAll72Matches = async function() {
-            if (!confirm("¿Cargar los 72 partidos reales? (Esto borrará los anteriores)")) return;
+            if (!confirm("⚠️ ¿Cargar los 72 partidos reales con bloqueo por horario? (Esto borrará los anteriores)")) return;
             const snapshot = await getDocs(collection(db, "matches"));
             const deleteBatch = writeBatch(db);
             snapshot.docs.forEach(doc => deleteBatch.delete(doc.ref));
             await deleteBatch.commit();
             
-            // (Aquí va el array allMatches de 72 partidos que te di en el mensaje anterior)
-            // Por brevedad, asumo que ya lo tienes en tu código. Si no, dímelo y te lo paso completo de nuevo.
-            alert("✅ Partidos cargados (Asegúrate de tener el array allMatches en el código)");
+            const allMatches = [
+                // GRUPO A (Ejemplo con formato datetime: YYYY-MM-DDTHH:mm)
+                { id: "A1", group: "A", homeTeam: "🇲🇽 México", awayTeam: "🇿🇦 Sudáfrica", date: "11/06 21:00", datetime: "2026-06-11T21:00", status: "scheduled", homeScore: null, awayScore: null },
+                { id: "A2", group: "A", homeTeam: "🇰🇷 Corea del Sur", awayTeam: "🇨🇿 Rep. Checa", date: "12/06 04:00", datetime: "2026-06-12T04:00", status: "scheduled", homeScore: null, awayScore: null },
+                { id: "A3", group: "A", homeTeam: "🇨🇿 Rep. Checa", awayTeam: "🇿🇦 Sudáfrica", date: "18/06 18:00", datetime: "2026-06-18T18:00", status: "scheduled", homeScore: null, awayScore: null },
+                { id: "A4", group: "A", homeTeam: "🇲🇽 México", awayTeam: "🇰🇷 Corea del Sur", date: "19/06 03:00", datetime: "2026-06-19T03:00", status: "scheduled", homeScore: null, awayScore: null },
+                { id: "A5", group: "A", homeTeam: "🇿🇦 Sudáfrica", awayTeam: "🇰🇷 Corea del Sur", date: "25/06 03:00", datetime: "2026-06-25T03:00", status: "scheduled", homeScore: null, awayScore: null },
+                { id: "A6", group: "A", homeTeam: "🇨🇿 Rep. Checa", awayTeam: "🇲🇽 México", date: "25/06 03:00", datetime: "2026-06-25T03:00", status: "scheduled", homeScore: null, awayScore: null },
+                // GRUPO B
+                { id: "B1", group: "B", homeTeam: "🇨🇦 Canadá", awayTeam: "🇧🇦 Bosnia-Herzegovina", date: "12/06 21:00", datetime: "2026-06-12T21:00", status: "scheduled", homeScore: null, awayScore: null },
+                { id: "B2", group: "B", homeTeam: "🇶🇦 Qatar", awayTeam: "🇨🇭 Suiza", date: "13/06 21:00", datetime: "2026-06-13T21:00", status: "scheduled", homeScore: null, awayScore: null },
+                { id: "B3", group: "B", homeTeam: "🇨🇭 Suiza", awayTeam: "🇧🇦 Bosnia-Herzegovina", date: "18/06 21:00", datetime: "2026-06-18T21:00", status: "scheduled", homeScore: null, awayScore: null },
+                { id: "B4", group: "B", homeTeam: "🇨🇦 Canadá", awayTeam: "🇶🇦 Qatar", date: "19/06 00:00", datetime: "2026-06-19T00:00", status: "scheduled", homeScore: null, awayScore: null },
+                { id: "B5", group: "B", homeTeam: "🇧🇦 Bosnia-Herzegovina", awayTeam: "🇶🇦 Qatar", date: "24/06 21:00", datetime: "2026-06-24T21:00", status: "scheduled", homeScore: null, awayScore: null },
+                { id: "B6", group: "B", homeTeam: "🇨🇭 Suiza", awayTeam: "🇨🇦 Canadá", date: "24/06 21:00", datetime: "2026-06-24T21:00", status: "scheduled", homeScore: null, awayScore: null },
+                // GRUPO C
+                { id: "C1", group: "C", homeTeam: "🇧🇷 Brasil", awayTeam: "🇲🇦 Marruecos", date: "14/06 00:00", datetime: "2026-06-14T00:00", status: "scheduled", homeScore: null, awayScore: null },
+                { id: "C2", group: "C", homeTeam: "🇭🇹 Haití", awayTeam: "🏴󠁧󠁢󠁳󠁣󠁴󠁿 Escocia", date: "14/06 03:00", datetime: "2026-06-14T03:00", status: "scheduled", homeScore: null, awayScore: null },
+                { id: "C3", group: "C", homeTeam: "🏴󠁧󠁢󠁳󠁣󠁴󠁿 Escocia", awayTeam: "🇲🇦 Marruecos", date: "20/06 00:00", datetime: "2026-06-20T00:00", status: "scheduled", homeScore: null, awayScore: null },
+                { id: "C4", group: "C", homeTeam: "🇧🇷 Brasil", awayTeam: "🇭🇹 Haití", date: "20/06 02:30", datetime: "2026-06-20T02:30", status: "scheduled", homeScore: null, awayScore: null },
+                { id: "C5", group: "C", homeTeam: "🏴󠁧󠁢󠁳󠁣󠁴󠁿 Escocia", awayTeam: "🇧🇷 Brasil", date: "25/06 00:00", datetime: "2026-06-25T00:00", status: "scheduled", homeScore: null, awayScore: null },
+                { id: "C6", group: "C", homeTeam: "🇲🇦 Marruecos", awayTeam: "🇭🇹 Haití", date: "25/06 00:00", datetime: "2026-06-25T00:00", status: "scheduled", homeScore: null, awayScore: null },
+                // GRUPO D
+                { id: "D1", group: "D", homeTeam: "🇺🇸 EE.UU.", awayTeam: "🇵🇾 Paraguay", date: "13/06 03:00", datetime: "2026-06-13T03:00", status: "scheduled", homeScore: null, awayScore: null },
+                { id: "D2", group: "D", homeTeam: "🇦🇺 Australia", awayTeam: "🇹🇷 Turquía", date: "14/06 06:00", datetime: "2026-06-14T06:00", status: "scheduled", homeScore: null, awayScore: null },
+                { id: "D3", group: "D", homeTeam: "🇺🇸 EE.UU.", awayTeam: "🇦🇺 Australia", date: "19/06 21:00", datetime: "2026-06-19T21:00", status: "scheduled", homeScore: null, awayScore: null },
+                { id: "D4", group: "D", homeTeam: "🇹🇷 Turquía", awayTeam: "🇵🇾 Paraguay", date: "20/06 05:00", datetime: "2026-06-20T05:00", status: "scheduled", homeScore: null, awayScore: null },
+                { id: "D5", group: "D", homeTeam: "🇹🇷 Turquía", awayTeam: "🇺🇸 EE.UU.", date: "26/06 04:00", datetime: "2026-06-26T04:00", status: "scheduled", homeScore: null, awayScore: null },
+                { id: "D6", group: "D", homeTeam: "🇵🇾 Paraguay", awayTeam: "🇦🇺 Australia", date: "26/06 04:00", datetime: "2026-06-26T04:00", status: "scheduled", homeScore: null, awayScore: null },
+                // GRUPO E
+                { id: "E1", group: "E", homeTeam: "🇩🇪 Alemania", awayTeam: "🇨🇼 Curazao", date: "14/06 19:00", datetime: "2026-06-14T19:00", status: "scheduled", homeScore: null, awayScore: null },
+                { id: "E2", group: "E", homeTeam: "🇨🇮 Costa de Marfil", awayTeam: "🇪🇨 Ecuador", date: "15/06 01:00", datetime: "2026-06-15T01:00", status: "scheduled", homeScore: null, awayScore: null },
+                { id: "E3", group: "E", homeTeam: "🇩🇪 Alemania", awayTeam: "🇨🇮 Costa de Marfil", date: "20/06 22:00", datetime: "2026-06-20T22:00", status: "scheduled", homeScore: null, awayScore: null },
+                { id: "E4", group: "E", homeTeam: "🇪🇨 Ecuador", awayTeam: "🇨🇼 Curazao", date: "21/06 02:00", datetime: "2026-06-21T02:00", status: "scheduled", homeScore: null, awayScore: null },
+                { id: "E5", group: "E", homeTeam: "🇨🇼 Curazao", awayTeam: "🇨🇮 Costa de Marfil", date: "25/06 22:00", datetime: "2026-06-25T22:00", status: "scheduled", homeScore: null, awayScore: null },
+                { id: "E6", group: "E", homeTeam: "🇪🇨 Ecuador", awayTeam: "🇩🇪 Alemania", date: "25/06 22:00", datetime: "2026-06-25T22:00", status: "scheduled", homeScore: null, awayScore: null },
+                // GRUPO F
+                { id: "F1", group: "F", homeTeam: "🇳🇱 Países Bajos", awayTeam: "🇯🇵 Japón", date: "14/06 22:00", datetime: "2026-06-14T22:00", status: "scheduled", homeScore: null, awayScore: null },
+                { id: "F2", group: "F", homeTeam: "🇸🇪 Suecia", awayTeam: "🇹🇳 Túnez", date: "15/06 04:00", datetime: "2026-06-15T04:00", status: "scheduled", homeScore: null, awayScore: null },
+                { id: "F3", group: "F", homeTeam: "🇳🇱 Países Bajos", awayTeam: "🇸🇪 Suecia", date: "20/06 19:00", datetime: "2026-06-20T19:00", status: "scheduled", homeScore: null, awayScore: null },
+                { id: "F4", group: "F", homeTeam: "🇹🇳 Túnez", awayTeam: "🇯🇵 Japón", date: "21/06 06:00", datetime: "2026-06-21T06:00", status: "scheduled", homeScore: null, awayScore: null },
+                { id: "F5", group: "F", homeTeam: "🇯🇵 Japón", awayTeam: "🇸🇪 Suecia", date: "26/06 01:00", datetime: "2026-06-26T01:00", status: "scheduled", homeScore: null, awayScore: null },
+                { id: "F6", group: "F", homeTeam: "🇹🇳 Túnez", awayTeam: "🇳🇱 Países Bajos", date: "26/06 01:00", datetime: "2026-06-26T01:00", status: "scheduled", homeScore: null, awayScore: null },
+                // GRUPO G
+                { id: "G1", group: "G", homeTeam: "🇧🇪 Bélgica", awayTeam: "🇪🇬 Egipto", date: "15/06 21:00", datetime: "2026-06-15T21:00", status: "scheduled", homeScore: null, awayScore: null },
+                { id: "G2", group: "G", homeTeam: "🇮🇷 Irán", awayTeam: "🇳🇿 Nueva Zelanda", date: "16/06 03:00", datetime: "2026-06-16T03:00", status: "scheduled", homeScore: null, awayScore: null },
+                { id: "G3", group: "G", homeTeam: "🇧🇪 Bélgica", awayTeam: "🇮🇷 Irán", date: "21/06 21:00", datetime: "2026-06-21T21:00", status: "scheduled", homeScore: null, awayScore: null },
+                { id: "G4", group: "G", homeTeam: "🇳🇿 Nueva Zelanda", awayTeam: "🇪🇬 Egipto", date: "22/06 03:00", datetime: "2026-06-22T03:00", status: "scheduled", homeScore: null, awayScore: null },
+                { id: "G5", group: "G", homeTeam: "🇪🇬 Egipto", awayTeam: "🇮🇷 Irán", date: "27/06 05:00", datetime: "2026-06-27T05:00", status: "scheduled", homeScore: null, awayScore: null },
+                { id: "G6", group: "G", homeTeam: "🇳🇿 Nueva Zelanda", awayTeam: "🇧🇪 Bélgica", date: "27/06 05:00", datetime: "2026-06-27T05:00", status: "scheduled", homeScore: null, awayScore: null },
+                // GRUPO H
+                { id: "H1", group: "H", homeTeam: "🇪🇸 España", awayTeam: "🇨🇻 Cabo Verde", date: "15/06 18:00", datetime: "2026-06-15T18:00", status: "scheduled", homeScore: null, awayScore: null },
+                { id: "H2", group: "H", homeTeam: "🇸🇦 Arabia Saudita", awayTeam: "🇺🇾 Uruguay", date: "16/06 00:00", datetime: "2026-06-16T00:00", status: "scheduled", homeScore: null, awayScore: null },
+                { id: "H3", group: "H", homeTeam: "🇪🇸 España", awayTeam: "🇸🇦 Arabia Saudita", date: "21/06 18:00", datetime: "2026-06-21T18:00", status: "scheduled", homeScore: null, awayScore: null },
+                { id: "H4", group: "H", homeTeam: "🇺🇾 Uruguay", awayTeam: "🇨🇻 Cabo Verde", date: "22/06 00:00", datetime: "2026-06-22T00:00", status: "scheduled", homeScore: null, awayScore: null },
+                { id: "H5", group: "H", homeTeam: "🇨🇻 Cabo Verde", awayTeam: "🇸🇦 Arabia Saudita", date: "27/06 02:00", datetime: "2026-06-27T02:00", status: "scheduled", homeScore: null, awayScore: null },
+                { id: "H6", group: "H", homeTeam: "🇺🇾 Uruguay", awayTeam: "🇪🇸 España", date: "27/06 02:00", datetime: "2026-06-27T02:00", status: "scheduled", homeScore: null, awayScore: null },
+                // GRUPO I
+                { id: "I1", group: "I", homeTeam: "🇫🇷 Francia", awayTeam: "🇸🇳 Senegal", date: "16/06 21:00", datetime: "2026-06-16T21:00", status: "scheduled", homeScore: null, awayScore: null },
+                { id: "I2", group: "I", homeTeam: "🇮🇶 Irak", awayTeam: "🇳🇴 Noruega", date: "17/06 00:00", datetime: "2026-06-17T00:00", status: "scheduled", homeScore: null, awayScore: null },
+                { id: "I3", group: "I", homeTeam: "🇫🇷 Francia", awayTeam: "🇮🇶 Irak", date: "22/06 23:00", datetime: "2026-06-22T23:00", status: "scheduled", homeScore: null, awayScore: null },
+                { id: "I4", group: "I", homeTeam: "🇳🇴 Noruega", awayTeam: "🇸🇳 Senegal", date: "23/06 02:00", datetime: "2026-06-23T02:00", status: "scheduled", homeScore: null, awayScore: null },
+                { id: "I5", group: "I", homeTeam: "🇸🇳 Senegal", awayTeam: "🇮🇶 Irak", date: "26/06 21:00", datetime: "2026-06-26T21:00", status: "scheduled", homeScore: null, awayScore: null },
+                { id: "I6", group: "I", homeTeam: "🇳🇴 Noruega", awayTeam: "🇫🇷 Francia", date: "26/06 21:00", datetime: "2026-06-26T21:00", status: "scheduled", homeScore: null, awayScore: null },
+                // GRUPO J
+                { id: "J1", group: "J", homeTeam: "🇦🇷 Argentina", awayTeam: "🇩🇿 Argelia", date: "17/06 03:00", datetime: "2026-06-17T03:00", status: "scheduled", homeScore: null, awayScore: null },
+                { id: "J2", group: "J", homeTeam: "🇦🇹 Austria", awayTeam: "🇯🇴 Jordania", date: "17/06 06:00", datetime: "2026-06-17T06:00", status: "scheduled", homeScore: null, awayScore: null },
+                { id: "J3", group: "J", homeTeam: "🇦🇷 Argentina", awayTeam: "🇦🇹 Austria", date: "22/06 19:00", datetime: "2026-06-22T19:00", status: "scheduled", homeScore: null, awayScore: null },
+                { id: "J4", group: "J", homeTeam: "🇯🇴 Jordania", awayTeam: "🇩🇿 Argelia", date: "23/06 05:00", datetime: "2026-06-23T05:00", status: "scheduled", homeScore: null, awayScore: null },
+                { id: "J5", group: "J", homeTeam: "🇩🇿 Argelia", awayTeam: "🇦🇹 Austria", date: "28/06 04:00", datetime: "2026-06-28T04:00", status: "scheduled", homeScore: null, awayScore: null },
+                { id: "J6", group: "J", homeTeam: "🇯🇴 Jordania", awayTeam: "🇦🇷 Argentina", date: "28/06 04:00", datetime: "2026-06-28T04:00", status: "scheduled", homeScore: null, awayScore: null },
+                // GRUPO K
+                { id: "K1", group: "K", homeTeam: "🇵🇹 Portugal", awayTeam: "🇨🇩 RD Congo", date: "17/06 19:00", datetime: "2026-06-17T19:00", status: "scheduled", homeScore: null, awayScore: null },
+                { id: "K2", group: "K", homeTeam: "🇺🇿 Uzbekistán", awayTeam: "🇨🇴 Colombia", date: "18/06 04:00", datetime: "2026-06-18T04:00", status: "scheduled", homeScore: null, awayScore: null },
+                { id: "K3", group: "K", homeTeam: "🇵🇹 Portugal", awayTeam: "🇺🇿 Uzbekistán", date: "23/06 19:00", datetime: "2026-06-23T19:00", status: "scheduled", homeScore: null, awayScore: null },
+                { id: "K4", group: "K", homeTeam: "🇨🇴 Colombia", awayTeam: "🇨🇩 RD Congo", date: "24/06 04:00", datetime: "2026-06-24T04:00", status: "scheduled", homeScore: null, awayScore: null },
+                { id: "K5", group: "K", homeTeam: "🇨🇴 Colombia", awayTeam: "🇵🇹 Portugal", date: "28/06 01:30", datetime: "2026-06-28T01:30", status: "scheduled", homeScore: null, awayScore: null },
+                { id: "K6", group: "K", homeTeam: "🇨🇩 RD Congo", awayTeam: "🇺🇿 Uzbekistán", date: "28/06 01:30", datetime: "2026-06-28T01:30", status: "scheduled", homeScore: null, awayScore: null },
+                // GRUPO L
+                { id: "L1", group: "L", homeTeam: "🏴󠁧󠁢󠁥󠁮󠁧󠁿 Inglaterra", awayTeam: "🇭🇷 Croacia", date: "17/06 22:00", datetime: "2026-06-17T22:00", status: "scheduled", homeScore: null, awayScore: null },
+                { id: "L2", group: "L", homeTeam: "🇬🇭 Ghana", awayTeam: "🇵🇦 Panamá", date: "18/06 01:00", datetime: "2026-06-18T01:00", status: "scheduled", homeScore: null, awayScore: null },
+                { id: "L3", group: "L", homeTeam: "🏴󠁧󠁢󠁥󠁮󠁧󠁿 Inglaterra", awayTeam: "🇬🇭 Ghana", date: "23/06 22:00", datetime: "2026-06-23T22:00", status: "scheduled", homeScore: null, awayScore: null },
+                { id: "L4", group: "L", homeTeam: "🇵🇦 Panamá", awayTeam: "🇭🇷 Croacia", date: "24/06 01:00", datetime: "2026-06-24T01:00", status: "scheduled", homeScore: null, awayScore: null },
+                { id: "L5", group: "L", homeTeam: "🇭🇷 Croacia", awayTeam: "🇬🇭 Ghana", date: "27/06 23:00", datetime: "2026-06-27T23:00", status: "scheduled", homeScore: null, awayScore: null },
+                { id: "L6", group: "L", homeTeam: "🇵🇦 Panamá", awayTeam: "🏴󠁧󠁢󠁥󠁮󠁧󠁿 Inglaterra", date: "27/06 23:00", datetime: "2026-06-27T23:00", status: "scheduled", homeScore: null, awayScore: null }
+            ];
+
+            const loadBatch = writeBatch(db);
+            allMatches.forEach(m => { loadBatch.set(doc(db, "matches", m.id), m); });
+            await loadBatch.commit();
+            
+            alert("✅ ¡72 partidos cargados con bloqueo por horario!");
             window.location.reload();
         };
 
@@ -360,6 +455,5 @@
     </script>
 </body>
 </html>
-
 
 
