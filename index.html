@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>FIFA World Cup 2026™ Quiniela | Conectio</title>
+    <title>FIFA World Cup 2026™ Quiniela | Softandnet</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800;900&family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
@@ -36,10 +36,10 @@
         .locked-badge { background: rgba(239, 68, 68, 0.2); color: #fca5a5; border: 1px solid #ef4444; }
         
         /* Estilos para la tabla de grupos */
-        .standings-row:nth-child(1) td { border-left: 3px solid #10b981; } /* 1ro */
-        .standings-row:nth-child(2) td { border-left: 3px solid #10b981; } /* 2do */
-        .standings-row:nth-child(3) td { border-left: 3px solid #ef4444; } /* 3ro */
-        .standings-row:nth-child(4) td { border-left: 3px solid #ef4444; } /* 4to */
+        .standings-row:nth-child(1) td { border-left: 3px solid #10b981; }
+        .standings-row:nth-child(2) td { border-left: 3px solid #10b981; }
+        .standings-row:nth-child(3) td { border-left: 3px solid #ef4444; }
+        .standings-row:nth-child(4) td { border-left: 3px solid #ef4444; }
     </style>
 </head>
 <body>
@@ -65,9 +65,14 @@
                     <p class="text-[10px] text-slate-400 font-semibold uppercase tracking-wider" id="user-display">Conectando...</p>
                 </div>
             </div>
-            <button onclick="window.fetchRealResults()" class="bg-fifa-blue hover:bg-blue-700 text-white p-2 rounded-lg transition" title="Sincronizar con API">
-                <i class="fas fa-sync-alt" id="sync-icon"></i>
-            </button>
+            <div class="flex gap-2">
+                <button onclick="window.fetchRealResults()" class="bg-fifa-blue hover:bg-blue-700 text-white p-2 rounded-lg transition" title="Sincronizar con API">
+                    <i class="fas fa-sync-alt" id="sync-icon"></i>
+                </button>
+                <button onclick="window.showAdminPanel()" class="bg-red-600 hover:bg-red-700 text-white p-2 rounded-lg transition" title="Panel de Admin">
+                    <i class="fas fa-user-shield"></i>
+                </button>
+            </div>
         </div>
     </header>
 
@@ -125,7 +130,7 @@
     <div id="standings-modal" class="modal fixed inset-0 z-50 flex items-end sm:items-center justify-center hidden p-0 sm:p-4">
         <div class="bg-slate-900 w-full sm:max-w-lg sm:rounded-2xl rounded-t-2xl border border-slate-700 shadow-2xl max-h-[80vh] flex flex-col">
             <div class="p-4 border-b border-slate-700 flex justify-between items-center">
-                <h3 class="text-xl font-title font-bold text-white"><i class="fas fa-table text-fifa-blue mr-2"></i>Tabla Grupo <span id="standings-group-title" class="text-fifa-gold">A</span></h3>
+                <h3 class="text-xl font-title font-bold text-white"><i class="fas fa-table text-fifa-blue mr-2"></i>Clasificación <span id="standings-group-title" class="text-fifa-gold">A</span></h3>
                 <button onclick="window.closeModals()" class="text-slate-400 hover:text-white"><i class="fas fa-times text-xl"></i></button>
             </div>
             <div class="overflow-y-auto p-4 flex-1">
@@ -170,16 +175,16 @@
         import { getFirestore, collection, doc, setDoc, onSnapshot, getDocs, writeBatch, deleteDoc } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
 
         // ==========================================
-        // 1. CONFIGURACIÓN DE FIREBASE (¡REEMPLAZA ESTO!)
+        // 1. CONFIGURACIÓN DE FIREBASE
         // ==========================================
-    const firebaseConfig = {
-        apiKey: "AIzaSyCfkCPAvcqtHJhit9aLMY02qX_hTKoTg4I",
-        authDomain: "quinielaevill-mundial2026.firebaseapp.com",
-        projectId: "quinielaevill-mundial2026",
-        storageBucket: "quinielaevill-mundial2026.firebasestorage.app",
-        messagingSenderId: "371407927074",
-        appId: "1:371407927074:web:a9f1a9317c7b4ec089577b"
-    };
+        const firebaseConfig = {
+            apiKey: "AIzaSyCfkCPAvcqtHJhit9aLMY02qX_hTKoTg4I",
+            authDomain: "quinielaevill-mundial2026.firebaseapp.com",
+            projectId: "quinielaevill-mundial2026",
+            storageBucket: "quinielaevill-mundial2026.firebasestorage.app",
+            messagingSenderId: "371407927074",
+            appId: "1:371407927074:web:a9f1a9317c7b4ec089577b"
+        };
 
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
@@ -320,7 +325,6 @@
             const groupMatches = matchesData.filter(m => m.group === group && m.status === "finished");
             const teams = {};
 
-            // Inicializar equipos del grupo
             const uniqueTeams = new Set();
             matchesData.filter(m => m.group === group).forEach(m => {
                 uniqueTeams.add(m.homeTeam);
@@ -330,7 +334,6 @@
                 teams[team] = { name: team, pj: 0, g: 0, e: 0, p: 0, gf: 0, gc: 0, dg: 0, pts: 0 };
             });
 
-            // Calcular estadísticas
             groupMatches.forEach(match => {
                 const home = teams[match.homeTeam];
                 const away = teams[match.awayTeam];
@@ -353,7 +356,6 @@
                 }
             });
 
-            // Ordenar: 1. Puntos, 2. Diferencia de Gol, 3. Goles a Favor
             const sortedTeams = Object.values(teams).sort((a, b) => {
                 if (b.pts !== a.pts) return b.pts - a.pts;
                 if (b.dg !== a.dg) return b.dg - a.dg;
@@ -443,7 +445,78 @@
         }
 
         // ==========================================
-        // INTEGRACIÓN REAL CON API (API-FOOTBALL)
+        // PANEL DE ADMINISTRACIÓN
+        // ==========================================
+        window.showAdminPanel = async function() {
+            const password = prompt("🔐 Contraseña de administrador:");
+            if (password !== "Admin2026..") { 
+                alert("❌ Contraseña incorrecta");
+                return;
+            }
+            
+            // Mostrar partidos agrupados por estado
+            const finishedMatches = matchesData.filter(m => m.status === "finished");
+            const upcomingMatches = matchesData.filter(m => m.status === "scheduled");
+            
+            let message = "📋 PARTIDOS DISPONIBLES:\n\n";
+            
+            if (finishedMatches.length > 0) {
+                message += "✅ FINALIZADOS:\n";
+                finishedMatches.forEach(m => {
+                    message += `${m.id}: ${m.homeTeam} ${m.homeScore}-${m.awayScore} ${m.awayTeam}\n`;
+                });
+                message += "\n";
+            }
+            
+            if (upcomingMatches.length > 0) {
+                message += "⏳ POR JUGAR:\n";
+                upcomingMatches.slice(0, 20).forEach(m => {
+                    message += `${m.id}: ${m.homeTeam} vs ${m.awayTeam} (${m.date})\n`;
+                });
+                if (upcomingMatches.length > 20) {
+                    message += `... y ${upcomingMatches.length - 20} más\n`;
+                }
+            }
+            
+            const matchId = prompt(`${message}\n\nEscribe el ID del partido a actualizar (ej: A1, B2):`);
+            
+            if (!matchId) return;
+            
+            const match = matchesData.find(m => m.id === matchId.toUpperCase());
+            if (!match) {
+                alert("❌ Partido no encontrado. Verifica el ID.");
+                return;
+            }
+            
+            const homeScore = prompt(`Goles de ${match.homeTeam}:`);
+            if (homeScore === null) return;
+            
+            const awayScore = prompt(`Goles de ${match.awayTeam}:`);
+            if (awayScore === null) return;
+            
+            if (isNaN(homeScore) || isNaN(awayScore)) {
+                alert("❌ Los goles deben ser números");
+                return;
+            }
+            
+            const matchRef = doc(db, "matches", matchId.toUpperCase());
+            setDoc(matchRef, {
+                status: "finished",
+                homeScore: parseInt(homeScore),
+                awayScore: parseInt(awayScore),
+                updatedAt: new Date(),
+                updatedBy: currentUser.uid
+            }, { merge: true }).then(() => {
+                alert(`✅ ¡Éxito!\n\n${match.homeTeam} ${homeScore} - ${awayScore} ${match.awayTeam}\n\nLos puntos se han recalculado automáticamente para todos los jugadores.`);
+                calculateAndRender();
+            }).catch(err => {
+                alert("❌ Error al actualizar: " + err.message);
+                console.error(err);
+            });
+        };
+
+        // ==========================================
+        // INTEGRACIÓN CON API (API-FOOTBALL)
         // ==========================================
         window.fetchRealResults = async function() {
             const icon = document.getElementById('sync-icon');
@@ -452,7 +525,6 @@
             console.log("🔄 Iniciando sincronización con API-Football (vía proxy)...");
 
             try {
-                // Llamamos a NUESTRO proxy en lugar de directamente a la API
                 const response = await fetch('https://api.quiniela.softandnet.site/api-proxy.php');
                 const data = await response.json();
                 
