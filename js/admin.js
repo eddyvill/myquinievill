@@ -18,17 +18,19 @@ export async function showAdminPanel() {
         return;
     }
     
-    // --- MENÚ PRINCIPAL DEL ADMIN (AHORA CON 4 OPCIONES) ---
-    const mainAction = prompt(
+    // --- MENÚ SEGURO CON CONFIRMACIONES ---
+    const menuText = 
         "🛠️ PANEL DE ADMINISTRACIÓN\n\n" +
-        "1. Gestionar Resultados de Partidos\n" +
-        "2. Gestionar Usuarios (Borrar usuario de prueba)\n" +
+        "Escribe el NÚMERO de la acción:\n\n" +
+        "1. 📝 Gestionar Resultados de Partidos\n" +
+        "2. 👥 Gestionar Usuarios (Borrar usuario completo)\n" +
         "3. 🔍 Ver Desglose de Puntos de un Usuario\n" +
-        "4. 🧹 REPARAR: Reiniciar Apuestas de un Usuario (Puntos a 0)\n\n" +
-        "Elige 1, 2, 3 o 4:"
-    );
+        "4. 🧹 REPARAR: Reiniciar Apuestas de un Usuario (Puntos a 0, el usuario NO se borra)";
+        
+    const mainAction = prompt(menuText);
 
     if (mainAction === '2') {
+        if (!confirm("⚠️ ¿Estás seguro de que quieres ENTRAR a la gestión de usuarios? (Esto puede llevar a borrar usuarios)")) return;
         await manageUsers(db);
         return;
     }
@@ -39,234 +41,216 @@ export async function showAdminPanel() {
     }
 
     if (mainAction === '4') {
+        if (!confirm("⚠️ ¿Estás seguro de que quieres REINICIAR las apuestas de un usuario?\n\nEsto pondrá sus puntos en 0 y borrará sus pronósticos, pero el usuario SEGUIRÁ REGISTRADO.")) return;
         await resetUserPredictions(db, matches);
         return;
     }
 
-    if (mainAction !== '1') {
-        alert("Acción cancelada o no válida.");
+    if (mainAction === '1') {
+        await manageMatches(matches, db);
         return;
     }
 
-    // --- LÓGICA DE GESTIÓN DE PARTIDOS (Sin cambios) ---
+    alert("Acción cancelada o no válida.");
+}
+
+// ==========================================
+// 1. GESTIONAR PARTIDOS
+// ==========================================
+async function manageMatches(matches, db) {
     const finishedMatches = matches.filter(m => m.status === "finished");
     const upcomingMatches = matches.filter(m => m.status === "scheduled");
     
-    let message = "📋 PARTIDOS DISPONIBLES:\n\n";
+    let message = "📋 PARTIDOS:\n\n";
     if (finishedMatches.length > 0) {
-        message += "✅ FINALIZADOS:\n";
-        finishedMatches.forEach(m => { message += `${m.id}: ${m.homeTeam} ${m.homeScore}-${m.awayScore} ${m.awayTeam}\n`; });
-        message += "\n";
+        message += "✅ FINALIZADOS:\n" + finishedMatches.map(m => `${m.id}: ${m.homeTeam} ${m.homeScore}-${m.awayScore} ${m.awayTeam}`).join('\n') + "\n\n";
     }
     if (upcomingMatches.length > 0) {
-        message += "⏳ POR JUGAR (Próximos 15):\n";
-        upcomingMatches.slice(0, 15).forEach(m => { message += `${m.id}: ${m.homeTeam} vs ${m.awayTeam} (${m.date})\n`; });
-        if (upcomingMatches.length > 15) message += `... y ${upcomingMatches.length - 15} más\n`;
+        message += "⏳ POR JUGAR:\n" + upcomingMatches.slice(0, 10).map(m => `${m.id}: ${m.homeTeam} vs ${m.awayTeam}`).join('\n');
     }
     
     const matchIdInput = prompt(`${message}\n\nEscribe el ID del partido (ej: A1, D1):`);
     if (!matchIdInput) return;
     
     const match = matches.find(m => m.id.toUpperCase() === matchIdInput.trim().toUpperCase());
-    if (!match) { alert(`❌ Partido con ID "${matchIdInput}" no encontrado.`); return; }
+    if (!match) { alert(`❌ Partido "${matchIdInput}" no encontrado.`); return; }
     
-    const currentStatus = match.status === "finished" ? `FINALIZADO (${match.homeScore}-${match.awayScore})` : "POR JUGAR";
-    const action = prompt(`Partido: ${match.homeTeam} vs ${match.awayTeam}\nEstado actual: ${currentStatus}\n\nElige:\n1. Actualizar / Forzar resultado\n2. REVERTIR a "Por Jugar"\n\nEscribe 1 o 2:`);
+    const action = prompt(
+        `Partido: ${match.homeTeam} vs ${match.awayTeam}\n` +
+        `Estado: ${match.status === "finished" ? `FINALIZADO (${match.homeScore}-${match.awayScore})` : "POR JUGAR"}\n\n` +
+        `1. Poner/Actualizar resultado\n` +
+        `2. REVERTIR a "Por Jugar" (Borrar marcador)`
+    );
 
     if (action === '2') {
-        if (!confirm(`⚠️ ¿Revertir este partido?\nSe borrará el marcador y se desbloquearán las apuestas.\n\n${match.homeTeam} vs ${match.awayTeam}`)) return;
-        try {
-            await setDoc(doc(db, "matches", match.id), { status: "scheduled", homeScore: null, awayScore: null, updatedAt: new Date() }, { merge: true });
-            alert(`✅ ¡Partido revertido! Apuestas desbloqueadas.`);
-            if (window.calculateAndRender) window.calculateAndRender();
-        } catch (error) { alert("❌ Error al actualizar."); }
+        if (!confirm(`⚠️ ¿REVERTIR este partido?\nSe desbloquearán las apuestas y los puntos se recalcularán.`)) return;
+        await setDoc(doc(db, "matches", match.id), { status: "scheduled", homeScore: null, awayScore: null, updatedAt: new Date() }, { merge: true });
+        alert(`✅ Partido revertido.`);
+        if (window.calculateAndRender) window.calculateAndRender();
         return;
     }
 
-    if (action !== '1') { alert("Acción cancelada."); return; }
+    if (action !== '1') { alert("Cancelado."); return; }
 
     const homeScore = prompt(`Goles de ${match.homeTeam}:`);
-    if (homeScore === null) return;
     const awayScore = prompt(`Goles de ${match.awayTeam}:`);
-    if (awayScore === null) return;
-    if (isNaN(homeScore) || isNaN(awayScore) || homeScore === '' || awayScore === '') { alert("❌ Los goles deben ser números"); return; }
     
-    try {
-        await setDoc(doc(db, "matches", match.id), { status: "finished", homeScore: parseInt(homeScore), awayScore: parseInt(awayScore), updatedAt: new Date() }, { merge: true });
-        alert(`✅ ¡Éxito!\n${match.homeTeam} ${homeScore} - ${awayScore} ${match.awayTeam}`);
-        if (window.calculateAndRender) window.calculateAndRender();
-    } catch (error) { alert("❌ Error al actualizar."); }
+    if (homeScore === null || awayScore === null || isNaN(homeScore) || isNaN(awayScore)) { 
+        alert("❌ Deben ser números válidos"); return; 
+    }
+    
+    await setDoc(doc(db, "matches", match.id), { 
+        status: "finished", 
+        homeScore: parseInt(homeScore), 
+        awayScore: parseInt(awayScore), 
+        updatedAt: new Date() 
+    }, { merge: true });
+    
+    alert(`✅ Actualizado: ${match.homeTeam} ${homeScore} - ${awayScore} ${match.awayTeam}`);
+    if (window.calculateAndRender) window.calculateAndRender();
 }
 
 // ==========================================
-// NUEVA FUNCIÓN: REPARAR / REINICIAR APUESTAS DE UN USUARIO
+// 2. REPARAR: REINICIAR APUESTAS (SEGURO)
 // ==========================================
 async function resetUserPredictions(db, matches) {
-    try {
-        const usersSnapshot = await getDocs(collection(db, "users"));
-        const users = usersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        
-        if (users.length === 0) { alert("ℹ️ No hay usuarios registrados."); return; }
+    const usersSnapshot = await getDocs(collection(db, "users"));
+    const users = usersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    
+    if (users.length === 0) { alert("ℹ️ No hay usuarios."); return; }
 
-        let userList = "👥 SELECCIONA EL USUARIO A REINICIAR:\n\n";
-        users.forEach((u, index) => {
-            userList += `${index + 1}. ${u.name} (ID: ${u.id.substring(0, 8)}...)\n`;
-        });
-        
-        const userIndexInput = prompt(`${userList}\nEscribe el NÚMERO del usuario cuyos puntos deseas reiniciar:`);
-        const userIndex = parseInt(userIndexInput) - 1;
-        
-        if (isNaN(userIndex) || userIndex < 0 || userIndex >= users.length) {
-            alert("❌ Selección inválida.");
+    let userList = users.map((u, i) => `${i + 1}. ${u.name}`).join('\n');
+    const userIndexInput = prompt(`👥 USUARIOS:\n\n${userList}\n\nEscribe el NÚMERO del usuario a REINICIAR (Puntos a 0):`);
+    const userIndex = parseInt(userIndexInput) - 1;
+    
+    if (isNaN(userIndex) || userIndex < 0 || userIndex >= users.length) { alert("❌ Selección inválida."); return; }
+    
+    const targetUser = users[userIndex];
+    
+    // Doble confirmación para evitar accidentes
+    const confirmReset = confirm(
+        `⚠️ ÚLTIMA CONFIRMACIÓN\n\n` +
+        `¿Reiniciar a "${targetUser.name}"?\n\n` +
+        `✅ El usuario SEGUIRÁ REGISTRADO.\n` +
+        `✅ Sus puntos volverán a 0.\n` +
+        `✅ Podrá volver a apostar.\n` +
+        `❌ Se borrarán todos sus pronósticos actuales.`
+    );
+    
+    if (!confirmReset) return;
+
+    const predictionsSnapshot = await getDocs(collection(db, "predictions"));
+    const batch = writeBatch(db);
+    let deletedCount = 0;
+    
+    predictionsSnapshot.docs.forEach(docSnapshot => {
+        if (docSnapshot.data().userId === targetUser.id) {
+            batch.delete(docSnapshot.ref);
+            deletedCount++;
+        }
+    });
+    
+    if (deletedCount > 0) await batch.commit();
+    
+    alert(`✅ ¡Reparación exitosa!\n\nSe eliminaron ${deletedCount} apuestas de "${targetUser.name}".\nSus puntos ahora son 0.`);
+    if (window.calculateAndRender) window.calculateAndRender();
+}
+
+// ==========================================
+// 3. DESGLOSE DE PUNTOS
+// ==========================================
+async function showUserPointsBreakdown(db, matches) {
+    const usersSnapshot = await getDocs(collection(db, "users"));
+    const users = usersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    if (users.length === 0) { alert("ℹ️ No hay usuarios."); return; }
+
+    let userList = users.map((u, i) => `${i + 1}. ${u.name}`).join('\n');
+    const userIndexInput = prompt(`👥 USUARIOS:\n\n${userList}\n\nEscribe el NÚMERO para ver su desglose:`);
+    const userIndex = parseInt(userIndexInput) - 1;
+    if (isNaN(userIndex) || userIndex < 0 || userIndex >= users.length) { alert("❌ Inválido."); return; }
+    
+    const targetUser = users[userIndex];
+    const predictionsSnapshot = await getDocs(collection(db, "predictions"));
+    const userPredictions = predictionsSnapshot.docs.map(doc => doc.data()).filter(pred => pred.userId === targetUser.id);
+    
+    if (userPredictions.length === 0) { alert(`ℹ️ "${targetUser.name}" no tiene apuestas.`); return; }
+
+    let totalPoints = 0;
+    let breakdown = `📊 DESGLOSE: ${targetUser.name}\n${"=".repeat(45)}\n\n`;
+    
+    userPredictions.forEach(pred => {
+        const match = matches.find(m => m.id === pred.matchId);
+        if (!match) {
+            breakdown += `⚠️ ${pred.matchId}: Datos no encontrados (Huérfano)\n\n`;
             return;
         }
         
-        const targetUser = users[userIndex];
-        const confirmReset = confirm(
-            `⚠️ ¡ATENCIÓN!\n\n` +
-            `¿Estás SEGURO de reiniciar a "${targetUser.name}"?\n\n` +
-            `Esta acción BORRARÁ TODOS sus pronósticos de la base de datos.\n` +
-            `Sus puntos volverán a 0 y podrá volver a apostar desde cero.\n` +
-            `El usuario NO será eliminado, solo sus apuestas.`
-        );
+        const isFinished = match.status === "finished";
+        breakdown += `${isFinished ? "✅" : "⏳"} ${match.id}: ${match.homeTeam} vs ${match.awayTeam}\n`;
         
-        if (!confirmReset) return;
-
-        // 1. Buscar y eliminar todas las predicciones de este usuario
-        const predictionsSnapshot = await getDocs(collection(db, "predictions"));
-        const batch = writeBatch(db);
-        let deletedCount = 0;
-        
-        predictionsSnapshot.docs.forEach(docSnapshot => {
-            if (docSnapshot.data().userId === targetUser.id) {
-                batch.delete(docSnapshot.ref);
-                deletedCount++;
-            }
-        });
-        
-        if (deletedCount > 0) {
-            await batch.commit();
+        if (!isFinished) {
+            breakdown += `   🎯 Pronóstico: ${pred.home} - ${pred.away} (Pendiente)\n\n`;
+            return;
         }
         
-        alert(`✅ ¡Reparación exitosa!\n\nSe eliminaron ${deletedCount} pronósticos de "${targetUser.name}".\nSus puntos ahora son 0 y puede volver a apostar.`);
+        breakdown += `   🎯 Apuesta: ${pred.home} - ${pred.away}\n`;
+        breakdown += `   🏆 Resultado: ${match.homeScore} - ${match.awayScore}\n`;
         
-        // 2. Forzar actualización de la interfaz
-        if (window.calculateAndRender) {
-            window.calculateAndRender();
-        }
+        const predDiff = pred.home - pred.away;
+        const actualDiff = match.homeScore - match.awayScore;
+        let points = 0, level = "";
         
-    } catch (error) {
-        console.error("Error al reiniciar usuario:", error);
-        alert("❌ Ocurrió un error. Revisa la consola.");
-    }
+        if (pred.home === match.homeScore && pred.away === match.awayScore) { points = 5; level = "🎯 Exacto"; } 
+        else if ((pred.home > pred.away && match.homeScore > match.awayScore) || (pred.home < pred.away && match.homeScore < match.awayScore) || (pred.home === pred.away && match.homeScore === match.awayScore)) { points = 3; level = "✅ Resultado"; } 
+        else if (predDiff === actualDiff) { points = 1; level = "📊 Diferencia"; } 
+        else { points = 0; level = "❌ Fallo"; }
+        
+        breakdown += `   ➕ ${level}: +${points} pts\n\n`;
+        totalPoints += points;
+    });
+    
+    breakdown += `${"=".repeat(45)}\n💰 TOTAL: ${totalPoints} pts\n`;
+    alert(breakdown);
 }
 
 // ==========================================
-// FUNCIÓN: DESGLOSE DE PUNTOS (Sin cambios)
-// ==========================================
-async function showUserPointsBreakdown(db, matches) {
-    try {
-        const usersSnapshot = await getDocs(collection(db, "users"));
-        const users = usersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        if (users.length === 0) { alert("ℹ️ No hay usuarios registrados."); return; }
-
-        let userList = "👥 SELECCIONA UN USUARIO PARA VER SU DESGLOSE:\n\n";
-        users.forEach((u, index) => { userList += `${index + 1}. ${u.name} (ID: ${u.id.substring(0, 8)}...)\n`; });
-        
-        const userIndexInput = prompt(`${userList}\nEscribe el NÚMERO del usuario:`);
-        const userIndex = parseInt(userIndexInput) - 1;
-        if (isNaN(userIndex) || userIndex < 0 || userIndex >= users.length) { alert("❌ Selección inválida."); return; }
-        
-        const targetUser = users[userIndex];
-        const predictionsSnapshot = await getDocs(collection(db, "predictions"));
-        const userPredictions = predictionsSnapshot.docs.map(doc => doc.data()).filter(pred => pred.userId === targetUser.id);
-        
-        if (userPredictions.length === 0) { alert(`ℹ️ "${targetUser.name}" no ha hecho apuestas.`); return; }
-
-        let totalPoints = 0;
-        let breakdown = `📊 DESGLOSE DE PUNTOS: ${targetUser.name}\n${"=".repeat(50)}\n\n`;
-        
-        userPredictions.forEach(pred => {
-            const match = matches.find(m => m.id === pred.matchId);
-            if (!match) {
-                breakdown += `⚠️ Partido ${pred.matchId}: Datos no encontrados (Posible apuesta huérfana)\n\n`;
-                return;
-            }
-            
-            const isFinished = match.status === "finished";
-            breakdown += `${isFinished ? "✅" : "⏳"} ${match.id}: ${match.homeTeam} vs ${match.awayTeam}\n`;
-            
-            if (!isFinished) {
-                breakdown += `   🎯 Pronóstico: ${pred.home} - ${pred.away} (Pendiente)\n\n`;
-                return;
-            }
-            
-            breakdown += `   🎯 Tu apuesta: ${pred.home} - ${pred.away}\n`;
-            breakdown += `   🏆 Resultado: ${match.homeScore} - ${match.awayScore}\n`;
-            
-            const predDiff = pred.home - pred.away;
-            const actualDiff = match.homeScore - match.awayScore;
-            let points = 0, level = "";
-            
-            if (pred.home === match.homeScore && pred.away === match.awayScore) { points = 5; level = "🎯 Marcador Exacto"; } 
-            else if ((pred.home > pred.away && match.homeScore > match.awayScore) || (pred.home < pred.away && match.homeScore < match.awayScore) || (pred.home === pred.away && match.homeScore === match.awayScore)) { points = 3; level = "✅ Resultado Correcto"; } 
-            else if (predDiff === actualDiff) { points = 1; level = "📊 Diferencia de Goles"; } 
-            else { points = 0; level = "❌ Fallo Total"; }
-            
-            breakdown += `   ➕ ${level}: +${points} pts\n\n`;
-            totalPoints += points;
-        });
-        
-        breakdown += `${"=".repeat(50)}\n💰 TOTAL CALCULADO: ${totalPoints} pts\n`;
-        alert(breakdown);
-    } catch (error) {
-        console.error("Error:", error);
-        alert("❌ Error al mostrar desglose.");
-    }
-}
-
-// ==========================================
-// FUNCIÓN: BORRAR USUARIO COMPLETO (Sin cambios)
+// 4. BORRAR USUARIO COMPLETO (PELIGROSO)
 // ==========================================
 async function manageUsers(db) {
-    try {
-        const usersSnapshot = await getDocs(collection(db, "users"));
-        const users = usersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        if (users.length === 0) { alert("ℹ️ No hay usuarios."); return; }
+    const usersSnapshot = await getDocs(collection(db, "users"));
+    const users = usersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    if (users.length === 0) { alert("ℹ️ No hay usuarios."); return; }
 
-        let userList = "👥 USUARIOS A ELIMINAR:\n\n";
-        users.forEach((u, index) => { userList += `${index + 1}. ${u.name} (ID: ${u.id.substring(0, 8)}...)\n`; });
-        
-        const userToDeleteIndex = prompt(`${userList}\nEscribe el NÚMERO a ELIMINAR PERMANENTEMENTE:`);
-        const index = parseInt(userToDeleteIndex) - 1;
-        if (isNaN(index) || index < 0 || index >= users.length) { alert("❌ Inválido."); return; }
-        
-        const targetUser = users[index];
-        if (!confirm(`⚠️ ¿ELIMINAR PERMANENTEMENTE a "${targetUser.name}" y TODOS sus datos?`)) return;
+    let userList = users.map((u, i) => `${i + 1}. ${u.name}`).join('\n');
+    const userToDeleteIndex = prompt(`👥 ELIMINAR PERMANENTEMENTE:\n\n${userList}\n\nEscribe el NÚMERO:`);
+    const index = parseInt(userToDeleteIndex) - 1;
+    if (isNaN(index) || index < 0 || index >= users.length) { alert("❌ Inválido."); return; }
+    
+    const targetUser = users[index];
+    
+    // TRIPLE CONFIRMACIÓN PARA BORRADO
+    if (!confirm(`⚠️ ¿ELIMINAR a "${targetUser.name}"?`)) return;
+    if (!confirm(`⚠️ ÚLTIMA ADVERTENCIA: Esto borrará al usuario Y todas sus apuestas para SIEMPRE. ¿Continuar?`)) return;
 
-        const predictionsSnapshot = await getDocs(collection(db, "predictions"));
-        const batch = writeBatch(db);
-        let deletedPredictions = 0;
-        
-        predictionsSnapshot.docs.forEach(docSnapshot => {
-            if (docSnapshot.data().userId === targetUser.id) {
-                batch.delete(docSnapshot.ref);
-                deletedPredictions++;
-            }
-        });
-        if (deletedPredictions > 0) await batch.commit();
-        await deleteDoc(doc(db, "users", targetUser.id));
-        
-        alert(`✅ "${targetUser.name}" eliminado con ${deletedPredictions} apuestas.`);
-        if (window.calculateAndRender) window.calculateAndRender();
-    } catch (error) {
-        console.error("Error:", error);
-        alert("❌ Error al eliminar.");
-    }
+    const predictionsSnapshot = await getDocs(collection(db, "predictions"));
+    const batch = writeBatch(db);
+    let deletedPredictions = 0;
+    
+    predictionsSnapshot.docs.forEach(docSnapshot => {
+        if (docSnapshot.data().userId === targetUser.id) {
+            batch.delete(docSnapshot.ref);
+            deletedPredictions++;
+        }
+    });
+    if (deletedPredictions > 0) await batch.commit();
+    await deleteDoc(doc(db, "users", targetUser.id));
+    
+    alert(`✅ "${targetUser.name}" eliminado con ${deletedPredictions} apuestas.`);
+    if (window.calculateAndRender) window.calculateAndRender();
 }
 
 // ==========================================
-// SINCRONIZACIÓN API (Sin cambios)
+// 5. SINCRONIZACIÓN API
 // ==========================================
 export async function fetchRealResults() {
     const icon = document.getElementById('sync-icon');

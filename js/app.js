@@ -141,14 +141,28 @@ function renderMatches() {
 }
 
 // ==========================================
-// 4. LÓGICA DE PUNTUACIÓN (5 - 3 - 1 - 0)
+// 4. LÓGICA DE PUNTUACIÓN (5 - 3 - 1 - 0) - CORREGIDA
 // ==========================================
-function calculateAndRender() {
+async function calculateAndRender() {
     if (matchesData.length === 0) return;
     
+    // 1. PRIMERO: Obtener TODOS los usuarios registrados para que nadie desaparezca
+    const usersSnapshot = await getDocs(collection(db, "users"));
     let leaderboard = {};
+    
+    usersSnapshot.docs.forEach(doc => {
+        const userData = doc.data();
+        leaderboard[doc.id] = { 
+            name: userData.name || "Jugador", 
+            exacts: 0, 
+            score: 0,
+            uid: doc.id 
+        };
+    });
+
     let userStats = { score: 0, exacts: 0 };
 
+    // 2. SEGUNDO: Calcular puntos basados en las predicciones
     matchesData.forEach(match => {
         const isFinished = match.status === "finished";
         const predKey = `${currentUser.uid}_${match.id}`;
@@ -158,6 +172,7 @@ function calculateAndRender() {
         match.myAway = myPred ? myPred.away : null;
         match.resultClass = "";
 
+        // Cálculo para el usuario actual (para mostrar su puntaje arriba)
         if (isFinished && myPred && myPred.home !== null && match.homeScore !== null) {
             const predDiff = myPred.home - myPred.away;
             const actualDiff = match.homeScore - match.awayScore;
@@ -181,16 +196,13 @@ function calculateAndRender() {
             }
         }
 
+        // Cálculo para TODOS los jugadores en el leaderboard
         Object.keys(predictionsData).forEach(key => {
             if (!key.endsWith(`_${match.id}`)) return;
             
             const [uid] = key.split('_');
             const pred = predictionsData[key];
             
-            if (!leaderboard[uid]) {
-                leaderboard[uid] = { name: "...", exacts: 0, score: 0 };
-            }
-
             if (isFinished && pred.home !== null && match.homeScore !== null) {
                 const predDiff = pred.home - pred.away;
                 const actualDiff = match.homeScore - match.awayScore;
@@ -211,18 +223,15 @@ function calculateAndRender() {
         });
     });
 
+    // 3. TERCERO: Actualizar la interfaz
     document.getElementById('user-score').textContent = userStats.score;
+    document.getElementById('total-players').textContent = Object.keys(leaderboard).length; // ¡Ahora sí mostrará 11!
     
-    getDocs(collection(db, "users")).then(snapshot => {
-        snapshot.docs.forEach(doc => { 
-            if (leaderboard[doc.id]) leaderboard[doc.id].name = doc.data().name; 
-        });
-        document.getElementById('total-players').textContent = Object.keys(leaderboard).length;
-        
-        const sorted = Object.values(leaderboard).sort((a, b) => b.score - a.score);
-        renderLeaderboard(sorted);
-        renderMatches();
-    });
+    // Ordenar: Mayor puntaje primero. Los de 0 puntos quedarán al final.
+    const sorted = Object.values(leaderboard).sort((a, b) => b.score - a.score);
+    
+    renderLeaderboard(sorted);
+    renderMatches(); 
 }
 
 // ==========================================
