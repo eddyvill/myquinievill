@@ -17,3 +17,17 @@ body { font-family: 'Inter', sans-serif; background: linear-gradient(135deg, #0a
 .locked-badge { background: rgba(239, 68, 68, 0.2); color: #fca5a5; border: 1px solid #ef4444; }
 .standings-row:nth-child(1) td, .standings-row:nth-child(2) td { border-left: 3px solid #10b981; }
 .standings-row:nth-child(3) td, .standings-row:nth-child(4) td { border-left: 3px solid #ef4444; }
+/* Estilos para el Banner de Próximo Partido */
+.next-match-card {
+    background: linear-gradient(135deg, rgba(0, 59, 123, 0.4) 0%, rgba(10, 14, 39, 0.8) 100%);
+    border: 1px solid rgba(212, 175, 55, 0.4);
+    border-radius: 0.75rem;
+    padding: 1rem;
+    box-shadow: 0 4px 15px rgba(212, 175, 55, 0.1);
+    animation: fadeIn 0.5s ease-out;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
+}

@@ -61,7 +61,6 @@ function initApp() {
             };
         });
 
-        // <-- AGREGAR ESTAS 2 LÍNEAS PARA QUE EL ADMIN PUEDA VER LOS DATOS
         window.matchesData = matchesData;
         window.db = db;
 
@@ -96,6 +95,11 @@ function renderTabs() {
 }
 
 function renderMatches() {
+    // ==========================================
+    // LLAMADA AL BANNER DE PRÓXIMO PARTIDO
+    // ==========================================
+    renderNextMatch();
+    
     const container = document.getElementById('matches-container');
     const groupMatches = matchesData.filter(m => m.group === activeGroup);
     const now = new Date();
@@ -152,15 +156,13 @@ function calculateAndRender() {
         
         match.myHome = myPred ? myPred.home : null;
         match.myAway = myPred ? myPred.away : null;
-        match.resultClass = ""; // Resetear clase visual
+        match.resultClass = "";
 
-        // --- CÁLCULO PARA EL USUARIO ACTUAL ---
         if (isFinished && myPred && myPred.home !== null && match.homeScore !== null) {
             const predDiff = myPred.home - myPred.away;
             const actualDiff = match.homeScore - match.awayScore;
 
             if (myPred.home === match.homeScore && myPred.away === match.awayScore) {
-                // NIVEL 1: Marcador Exacto (5 pts)
                 userStats.score += 5;
                 userStats.exacts += 1;
                 match.resultClass = "exact-match";
@@ -169,20 +171,16 @@ function calculateAndRender() {
                 (myPred.home < myPred.away && match.homeScore < match.awayScore) ||
                 (myPred.home === myPred.away && match.homeScore === match.awayScore)
             ) {
-                // NIVEL 2: Resultado Correcto (3 pts)
                 userStats.score += 3;
                 match.resultClass = "winner-match";
             } else if (predDiff === actualDiff) {
-                // NIVEL 3: Diferencia de Goles Correcta (1 pt)
                 userStats.score += 1;
-                match.resultClass = "winner-match"; // Mismo color amarillo para "parcialmente correcto"
+                match.resultClass = "winner-match";
             } else {
-                // NIVEL 4: Fallo Total (0 pts)
                 match.resultClass = "lost-match";
             }
         }
 
-        // --- CÁLCULO PARA EL LEADERBOARD (Todos los jugadores) ---
         Object.keys(predictionsData).forEach(key => {
             if (!key.endsWith(`_${match.id}`)) return;
             
@@ -213,7 +211,6 @@ function calculateAndRender() {
         });
     });
 
-    // Actualizar UI
     document.getElementById('user-score').textContent = userStats.score;
     
     getDocs(collection(db, "users")).then(snapshot => {
@@ -224,8 +221,60 @@ function calculateAndRender() {
         
         const sorted = Object.values(leaderboard).sort((a, b) => b.score - a.score);
         renderLeaderboard(sorted);
-        renderMatches(); // Re-renderizar para aplicar los colores de borde
+        renderMatches();
     });
+}
+
+// ==========================================
+// BANNER DE PRÓXIMO PARTIDO
+// ==========================================
+function renderNextMatch() {
+    const banner = document.getElementById('next-match-banner');
+    if (!banner) return;
+
+    const now = new Date();
+    const upcoming = matchesData.filter(m => m.status === 'scheduled' && new Date(m.datetime) > now);
+    upcoming.sort((a, b) => new Date(a.datetime) - new Date(b.datetime));
+    
+    const nextMatch = upcoming[0];
+    
+    if (nextMatch) {
+        const matchTime = new Date(nextMatch.datetime);
+        const timeDiff = matchTime - now;
+        const hoursLeft = Math.floor(timeDiff / (1000 * 60 * 60));
+        const minsLeft = Math.floor((timeDiff % (1000 * 60 * 60)) / (1000 * 60));
+        
+        let timeText = "";
+        if (hoursLeft > 24) {
+            timeText = `Faltan ${Math.floor(hoursLeft / 24)} día(s)`;
+        } else if (hoursLeft > 0) {
+            timeText = `Faltan ${hoursLeft}h ${minsLeft}m`;
+        } else {
+            timeText = `¡Cierra en ${minsLeft} minutos!`;
+        }
+
+        banner.innerHTML = `
+            <div class="next-match-card">
+                <div class="flex items-center justify-center gap-2 mb-3">
+                    <i class="fas fa-stopwatch text-fifa-gold text-lg animate-pulse"></i>
+                    <span class="text-xs font-bold uppercase tracking-widest text-fifa-gold">¡Próximo Partido!</span>
+                </div>
+                <div class="flex items-center justify-between gap-2 mb-3">
+                    <div class="flex-1 text-right font-title font-bold text-white truncate text-sm sm:text-base">${nextMatch.homeTeam}</div>
+                    <div class="bg-slate-900/80 px-3 py-1 rounded-lg border border-fifa-gold/30 text-fifa-gold font-bold text-xs sm:text-sm shrink-0">VS</div>
+                    <div class="flex-1 text-left font-title font-bold text-white truncate text-sm sm:text-base">${nextMatch.awayTeam}</div>
+                </div>
+                <div class="text-center">
+                    <span class="inline-flex items-center gap-1 text-xs sm:text-sm text-slate-300 bg-slate-900/50 px-3 py-1 rounded-full border border-slate-700">
+                        <i class="far fa-clock text-fifa-gold"></i> ${nextMatch.date} <span class="text-fifa-gold font-bold ml-1">(${timeText})</span>
+                    </span>
+                </div>
+            </div>
+        `;
+        banner.classList.remove('hidden');
+    } else {
+        banner.classList.add('hidden');
+    }
 }
 
 function renderLeaderboard(data) {
