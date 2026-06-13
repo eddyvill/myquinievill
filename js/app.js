@@ -253,11 +253,19 @@ function renderNextMatch() {
             timeText = `¡Cierra en ${minsLeft} minutos!`;
         }
 
+        // NUEVO: Badge con el grupo
+        const groupBadge = `
+            <span class="bg-fifa-gold text-fifa-dark text-[10px] font-black px-2 py-1 rounded-md uppercase tracking-wide shadow-md">
+                Grupo ${nextMatch.group}
+            </span>
+        `;
+
         banner.innerHTML = `
             <div class="next-match-card">
                 <div class="flex items-center justify-center gap-2 mb-3">
                     <i class="fas fa-stopwatch text-fifa-gold text-lg animate-pulse"></i>
                     <span class="text-xs font-bold uppercase tracking-widest text-fifa-gold">¡Próximo Partido!</span>
+                    ${groupBadge}
                 </div>
                 <div class="flex items-center justify-between gap-2 mb-3">
                     <div class="flex-1 text-right font-title font-bold text-white truncate text-sm sm:text-base">${nextMatch.homeTeam}</div>

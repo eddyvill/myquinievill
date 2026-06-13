@@ -10,7 +10,7 @@ export const allMatches = [
     
     // GRUPO B
     { id: "B1", group: "B", homeTeam: "🇨🇦 Canadá", awayTeam: "🇧🇦 Bosnia-Herzegovina", date: "12/06 13:00", datetime: "2026-06-12T13:00:00-04:00", status: "scheduled", homeScore: null, awayScore: null },
-    { id: "B2", group: "B", homeTeam: "🇶🇦 Qatar", awayTeam: "🇨🇭 Suiza", date: "13/06 14:00", datetime: "2026-06-13T16:00:00-04:00", status: "scheduled", homeScore: null, awayScore: null },
+    { id: "B2", group: "B", homeTeam: "🇶🇦 Qatar", awayTeam: "🇨🇭 Suiza", date: "13/06 15:00", datetime: "2026-06-13T15:00:00-04:00", status: "scheduled", homeScore: null, awayScore: null },
     { id: "B3", group: "B", homeTeam: "🇨🇭 Suiza", awayTeam: "🇧🇦 Bosnia-Herzegovina", date: "18/06 13:00", datetime: "2026-06-18T13:00:00-04:00", status: "scheduled", homeScore: null, awayScore: null },
     { id: "B4", group: "B", homeTeam: "🇨🇦 Canadá", awayTeam: "🇶🇦 Qatar", date: "18/06 16:00", datetime: "2026-06-18T16:00:00-04:00", status: "scheduled", homeScore: null, awayScore: null },
     { id: "B5", group: "B", homeTeam: "🇧🇦 Bosnia-Herzegovina", awayTeam: "🇶🇦 Qatar", date: "24/06 16:00", datetime: "2026-06-24T16:00:00-04:00", status: "scheduled", homeScore: null, awayScore: null },
