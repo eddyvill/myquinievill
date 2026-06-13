@@ -14,6 +14,7 @@ let currentUser = null;
 let matchesData = [];
 let predictionsData = {};
 let activeGroup = 'A';
+let featuredTimerInterval = null; // Para el contador de la tarjeta destacada
 
 // ==========================================
 // 1. AUTENTICACIÓN
@@ -73,7 +74,7 @@ function initApp() {
         snapshot.docs.forEach(doc => { predictionsData[doc.id] = doc.data(); });
         calculateAndRender();
     });
-}   
+}
 
 // ==========================================
 // 3. RENDERIZADO DE INTERFAZ
@@ -94,12 +95,105 @@ function renderTabs() {
     `).join('');
 }
 
+// --- TARJETA DE APUESTA DESTACADA (HOT MATCH) ---
+function renderFeaturedMatch() {
+    const container = document.getElementById('featured-match-card');
+    if (!container) return;
+
+    if (featuredTimerInterval) {
+        clearInterval(featuredTimerInterval);
+        featuredTimerInterval = null;
+    }
+
+    const now = new Date();
+    const upcoming = matchesData.filter(m => m.status === 'scheduled' && new Date(m.datetime) > now);
+    upcoming.sort((a, b) => new Date(a.datetime) - new Date(b.datetime));
+    
+    const nextMatch = upcoming[0];
+    
+    if (nextMatch) {
+        const matchTime = new Date(nextMatch.datetime);
+        const predKey = currentUser ? `${currentUser.uid}_${nextMatch.id}` : null;
+        const myPred = predKey && predictionsData[predKey] ? predictionsData[predKey] : { home: null, away: null };
+        const myH = myPred.home !== null ? myPred.home : '';
+        const myA = myPred.away !== null ? myPred.away : '';
+        
+        const updateTimer = () => {
+            const currentTime = new Date();
+            const timeDiff = matchTime - currentTime;
+            
+            if (timeDiff <= 0) {
+                container.classList.add('hidden');
+                if (featuredTimerInterval) clearInterval(featuredTimerInterval);
+                renderMatches();
+                return;
+            }
+            
+            const hoursLeft = Math.floor(timeDiff / (1000 * 60 * 60));
+            const minsLeft = Math.floor((timeDiff % (1000 * 60 * 60)) / (1000 * 60));
+            const secsLeft = Math.floor((timeDiff % (1000 * 60)) / 1000);
+            
+            let timeText = "";
+            let isUrgent = false;
+            
+            if (hoursLeft > 24) {
+                timeText = `Faltan ${Math.floor(hoursLeft / 24)} día(s)`;
+            } else if (hoursLeft > 0) {
+                timeText = `${hoursLeft}h ${minsLeft}m ${secsLeft}s`;
+            } else {
+                timeText = `¡CIERRA EN ${minsLeft}m ${secsLeft}s!`;
+                isUrgent = true;
+            }
+            
+            const timerEl = document.getElementById('featured-timer-text');
+            const timerContainer = document.getElementById('featured-timer-container');
+            if (timerEl) timerEl.textContent = timeText;
+            if (timerContainer) {
+                if (isUrgent) timerContainer.classList.add('urgent');
+                else timerContainer.classList.remove('urgent');
+            }
+        };
+        
+        container.innerHTML = `
+            <div class="featured-card">
+                <div class="featured-header">
+                    <span class="featured-badge">🔥 Apuesta Destacada</span>
+                    <span class="text-xs font-bold uppercase tracking-widest text-fifa-gold">Grupo ${nextMatch.group}</span>
+                </div>
+                <div class="featured-teams">
+                    <div class="featured-team">
+                        <div class="featured-team-name">${nextMatch.homeTeam}</div>
+                    </div>
+                    <div class="featured-score-inputs">
+                        <input type="number" inputmode="numeric" pattern="[0-9]*" class="featured-score-input" id="featured-input-home" value="${myH}" onchange="window.savePrediction('${nextMatch.id}', 'home', this.value)" placeholder="-">
+                        <span class="featured-vs">VS</span>
+                        <input type="number" inputmode="numeric" pattern="[0-9]*" class="featured-score-input" id="featured-input-away" value="${myA}" onchange="window.savePrediction('${nextMatch.id}', 'away', this.value)" placeholder="-">
+                    </div>
+                    <div class="featured-team">
+                        <div class="featured-team-name">${nextMatch.awayTeam}</div>
+                    </div>
+                </div>
+                <div class="featured-footer">
+                    <div id="featured-timer-container" class="featured-timer">
+                        <i class="fas fa-stopwatch"></i>
+                        <span id="featured-timer-text">Calculando...</span>
+                    </div>
+                    <div class="text-[10px] text-slate-400 mt-2 uppercase tracking-wider">
+                        ${nextMatch.date} • Haz tu pronóstico antes del pitazo inicial
+                    </div>
+                </div>
+            </div>
+        `;
+        container.classList.remove('hidden');
+        updateTimer();
+        featuredTimerInterval = setInterval(updateTimer, 1000);
+    } else {
+        container.classList.add('hidden');
+    }
+}
+
 function renderMatches() {
-    // ==========================================
-    // LLAMADA AL BANNER DE PRÓXIMO PARTIDO
-    // ==========================================
-    renderFeaturedMatch(); // <--- LLAMAR A LA NUEVA FUNCIÓN AQUÍ
-    const container = document.getElementById('matches-container');
+    renderFeaturedMatch(); // Llama a la tarjeta destacada
     
     const container = document.getElementById('matches-container');
     const groupMatches = matchesData.filter(m => m.group === activeGroup);
@@ -142,65 +236,48 @@ function renderMatches() {
 }
 
 // ==========================================
-// 4. LÓGICA DE PUNTUACIÓN (5 - 3 - 1 - 0) - CORREGIDA
+// 4. LÓGICA DE PUNTUACIÓN (5 - 3 - 1 - 0)
 // ==========================================
 async function calculateAndRender() {
     if (matchesData.length === 0) return;
     
-    // 1. PRIMERO: Obtener TODOS los usuarios registrados para que nadie desaparezca
+    // 1. Obtener TODOS los usuarios para que nadie desaparezca
     const usersSnapshot = await getDocs(collection(db, "users"));
     let leaderboard = {};
     
     usersSnapshot.docs.forEach(doc => {
         const userData = doc.data();
-        leaderboard[doc.id] = { 
-            name: userData.name || "Jugador", 
-            exacts: 0, 
-            score: 0,
-            uid: doc.id 
-        };
+        leaderboard[doc.id] = { name: userData.name || "Jugador", exacts: 0, score: 0, uid: doc.id };
     });
 
     let userStats = { score: 0, exacts: 0 };
 
-    // 2. SEGUNDO: Calcular puntos basados en las predicciones
     matchesData.forEach(match => {
         const isFinished = match.status === "finished";
-        const predKey = `${currentUser.uid}_${match.id}`;
-        const myPred = predictionsData[predKey];
+        const predKey = currentUser ? `${currentUser.uid}_${match.id}` : null;
+        const myPred = predKey ? predictionsData[predKey] : null;
         
         match.myHome = myPred ? myPred.home : null;
         match.myAway = myPred ? myPred.away : null;
         match.resultClass = "";
 
-        // Cálculo para el usuario actual (para mostrar su puntaje arriba)
         if (isFinished && myPred && myPred.home !== null && match.homeScore !== null) {
             const predDiff = myPred.home - myPred.away;
             const actualDiff = match.homeScore - match.awayScore;
 
             if (myPred.home === match.homeScore && myPred.away === match.awayScore) {
-                userStats.score += 5;
-                userStats.exacts += 1;
-                match.resultClass = "exact-match";
-            } else if (
-                (myPred.home > myPred.away && match.homeScore > match.awayScore) ||
-                (myPred.home < myPred.away && match.homeScore < match.awayScore) ||
-                (myPred.home === myPred.away && match.homeScore === match.awayScore)
-            ) {
-                userStats.score += 3;
-                match.resultClass = "winner-match";
+                userStats.score += 5; userStats.exacts += 1; match.resultClass = "exact-match";
+            } else if ((myPred.home > myPred.away && match.homeScore > match.awayScore) || (myPred.home < myPred.away && match.homeScore < match.awayScore) || (myPred.home === myPred.away && match.homeScore === match.awayScore)) {
+                userStats.score += 3; match.resultClass = "winner-match";
             } else if (predDiff === actualDiff) {
-                userStats.score += 1;
-                match.resultClass = "winner-match";
+                userStats.score += 1; match.resultClass = "winner-match";
             } else {
                 match.resultClass = "lost-match";
             }
         }
 
-        // Cálculo para TODOS los jugadores en el leaderboard
         Object.keys(predictionsData).forEach(key => {
             if (!key.endsWith(`_${match.id}`)) return;
-            
             const [uid] = key.split('_');
             const pred = predictionsData[key];
             
@@ -209,13 +286,8 @@ async function calculateAndRender() {
                 const actualDiff = match.homeScore - match.awayScore;
 
                 if (pred.home === match.homeScore && pred.away === match.awayScore) {
-                    leaderboard[uid].score += 5;
-                    leaderboard[uid].exacts += 1;
-                } else if (
-                    (pred.home > pred.away && match.homeScore > match.awayScore) ||
-                    (pred.home < pred.away && match.homeScore < match.awayScore) ||
-                    (pred.home === pred.away && match.homeScore === match.awayScore)
-                ) {
+                    leaderboard[uid].score += 5; leaderboard[uid].exacts += 1;
+                } else if ((pred.home > pred.away && match.homeScore > match.awayScore) || (pred.home < pred.away && match.homeScore < match.awayScore) || (pred.home === pred.away && match.homeScore === match.awayScore)) {
                     leaderboard[uid].score += 3;
                 } else if (predDiff === actualDiff) {
                     leaderboard[uid].score += 1;
@@ -224,137 +296,12 @@ async function calculateAndRender() {
         });
     });
 
-    // 3. TERCERO: Actualizar la interfaz
     document.getElementById('user-score').textContent = userStats.score;
-    document.getElementById('total-players').textContent = Object.keys(leaderboard).length; // ¡Ahora sí mostrará 11!
+    document.getElementById('total-players').textContent = Object.keys(leaderboard).length;
     
-    // Ordenar: Mayor puntaje primero. Los de 0 puntos quedarán al final.
     const sorted = Object.values(leaderboard).sort((a, b) => b.score - a.score);
-    
     renderLeaderboard(sorted);
-    renderMatches(); 
-}
-
-// ==========================================
-// TARJETA DE APUESTA DESTACADA (HOT MATCH)
-// ==========================================
-let featuredTimerInterval = null;
-
-function renderFeaturedMatch() {
-    const container = document.getElementById('featured-match-card');
-    if (!container) return;
-
-    // Limpiar intervalo anterior si existe
-    if (featuredTimerInterval) {
-        clearInterval(featuredTimerInterval);
-        featuredTimerInterval = null;
-    }
-
-    const now = new Date();
-    const upcoming = matchesData.filter(m => m.status === 'scheduled' && new Date(m.datetime) > now);
-    upcoming.sort((a, b) => new Date(a.datetime) - new Date(b.datetime));
-    
-    const nextMatch = upcoming[0];
-    
-    if (nextMatch) {
-        const matchTime = new Date(nextMatch.datetime);
-        const predKey = currentUser ? `${currentUser.uid}_${nextMatch.id}` : null;
-        const myPred = predKey && predictionsData[predKey] ? predictionsData[predKey] : { home: null, away: null };
-        const myH = myPred.home !== null ? myPred.home : '';
-        const myA = myPred.away !== null ? myPred.away : '';
-        
-        // Función para actualizar el contador cada segundo
-        const updateTimer = () => {
-            const currentTime = new Date();
-            const timeDiff = matchTime - currentTime;
-            
-            if (timeDiff <= 0) {
-                container.classList.add('hidden');
-                if (featuredTimerInterval) clearInterval(featuredTimerInterval);
-                renderMatches(); // Actualizar la vista normal también
-                return;
-            }
-            
-            const hoursLeft = Math.floor(timeDiff / (1000 * 60 * 60));
-            const minsLeft = Math.floor((timeDiff % (1000 * 60 * 60)) / (1000 * 60));
-            const secsLeft = Math.floor((timeDiff % (1000 * 60)) / 1000);
-            
-            let timeText = "";
-            let isUrgent = false;
-            
-            if (hoursLeft > 24) {
-                timeText = `Faltan ${Math.floor(hoursLeft / 24)} día(s)`;
-            } else if (hoursLeft > 0) {
-                timeText = `${hoursLeft}h ${minsLeft}m ${secsLeft}s`;
-            } else {
-                timeText = `¡CIERRA EN ${minsLeft}m ${secsLeft}s!`;
-                isUrgent = true; // Menos de 1 hora, activar alarma visual
-            }
-            
-            const timerEl = document.getElementById('featured-timer-text');
-            const timerContainer = document.getElementById('featured-timer-container');
-            if (timerEl) timerEl.textContent = timeText;
-            if (timerContainer) {
-                if (isUrgent) timerContainer.classList.add('urgent');
-                else timerContainer.classList.remove('urgent');
-            }
-        };
-        
-        // Renderizar la tarjeta HTML
-        container.innerHTML = `
-            <div class="featured-card">
-                <div class="featured-header">
-                    <span class="featured-badge">🔥 Apuesta Destacada</span>
-                    <span class="text-xs font-bold uppercase tracking-widest text-fifa-gold">Grupo ${nextMatch.group}</span>
-                </div>
-                
-                <div class="featured-teams">
-                    <div class="featured-team">
-                        <div class="featured-team-name">${nextMatch.homeTeam}</div>
-                    </div>
-                    
-                    <div class="featured-score-inputs">
-                        <input type="number" inputmode="numeric" pattern="[0-9]*" 
-                            class="featured-score-input" 
-                            id="featured-input-home"
-                            value="${myH}" 
-                            onchange="window.savePrediction('${nextMatch.id}', 'home', this.value)"
-                            placeholder="-">
-                        <span class="featured-vs">VS</span>
-                        <input type="number" inputmode="numeric" pattern="[0-9]*" 
-                            class="featured-score-input" 
-                            id="featured-input-away"
-                            value="${myA}" 
-                            onchange="window.savePrediction('${nextMatch.id}', 'away', this.value)"
-                            placeholder="-">
-                    </div>
-                    
-                    <div class="featured-team">
-                        <div class="featured-team-name">${nextMatch.awayTeam}</div>
-                    </div>
-                </div>
-                
-                <div class="featured-footer">
-                    <div id="featured-timer-container" class="featured-timer">
-                        <i class="fas fa-stopwatch"></i>
-                        <span id="featured-timer-text">Calculando...</span>
-                    </div>
-                    <div class="text-[10px] text-slate-400 mt-2 uppercase tracking-wider">
-                        ${nextMatch.date} • Haz tu pronóstico antes del pitazo inicial
-                    </div>
-                </div>
-            </div>
-        `;
-        
-        container.classList.remove('hidden');
-        
-        // Iniciar el contador regresivo
-        updateTimer(); // Ejecutar inmediatamente
-        featuredTimerInterval = setInterval(updateTimer, 1000); // Actualizar cada segundo
-        
-    } else {
-        container.classList.add('hidden');
-    }
+    renderMatches();
 }
 
 function renderLeaderboard(data) {
