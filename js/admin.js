@@ -18,34 +18,34 @@ export async function showAdminPanel() {
         return;
     }
     
-    // --- MENÚ SEGURO CON CONFIRMACIONES ---
     const menuText = 
         "🛠️ PANEL DE ADMINISTRACIÓN\n\n" +
-        "Escribe el NÚMERO de la acción:\n\n" +
         "1. 📝 Gestionar Resultados de Partidos\n" +
         "2. 👥 Gestionar Usuarios (Borrar usuario completo)\n" +
         "3. 🔍 Ver Desglose de Puntos de un Usuario\n" +
-        "4. 🧹 REPARAR: Reiniciar Apuestas de un Usuario (Puntos a 0, el usuario NO se borra)";
+        "4. 🧹 REPARAR: Reiniciar Apuestas de un Usuario (Puntos a 0)\n" +
+        "5. 🛠️ RESTAURAR: Poner pronóstico manual a un usuario (Recupera sus puntos)";
         
     const mainAction = prompt(menuText);
 
     if (mainAction === '2') {
-        if (!confirm("⚠️ ¿Estás seguro de que quieres ENTRAR a la gestión de usuarios? (Esto puede llevar a borrar usuarios)")) return;
+        if (!confirm("⚠️ ¿Entrar a gestión de usuarios? (Esto puede llevar a borrar usuarios)")) return;
         await manageUsers(db);
         return;
     }
-
     if (mainAction === '3') {
         await showUserPointsBreakdown(db, matches);
         return;
     }
-
     if (mainAction === '4') {
-        if (!confirm("⚠️ ¿Estás seguro de que quieres REINICIAR las apuestas de un usuario?\n\nEsto pondrá sus puntos en 0 y borrará sus pronósticos, pero el usuario SEGUIRÁ REGISTRADO.")) return;
+        if (!confirm("⚠️ ¿Reiniciar apuestas de un usuario? (Puntos a 0, el usuario sigue registrado)")) return;
         await resetUserPredictions(db, matches);
         return;
     }
-
+    if (mainAction === '5') {
+        await restoreUserPrediction(db, matches);
+        return;
+    }
     if (mainAction === '1') {
         await manageMatches(matches, db);
         return;
@@ -111,33 +111,20 @@ async function manageMatches(matches, db) {
 }
 
 // ==========================================
-// 2. REPARAR: REINICIAR APUESTAS (SEGURO)
+// 2. REPARAR: REINICIAR APUESTAS
 // ==========================================
 async function resetUserPredictions(db, matches) {
     const usersSnapshot = await getDocs(collection(db, "users"));
     const users = usersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-    
     if (users.length === 0) { alert("ℹ️ No hay usuarios."); return; }
 
     let userList = users.map((u, i) => `${i + 1}. ${u.name}`).join('\n');
     const userIndexInput = prompt(`👥 USUARIOS:\n\n${userList}\n\nEscribe el NÚMERO del usuario a REINICIAR (Puntos a 0):`);
     const userIndex = parseInt(userIndexInput) - 1;
-    
     if (isNaN(userIndex) || userIndex < 0 || userIndex >= users.length) { alert("❌ Selección inválida."); return; }
     
     const targetUser = users[userIndex];
-    
-    // Doble confirmación para evitar accidentes
-    const confirmReset = confirm(
-        `⚠️ ÚLTIMA CONFIRMACIÓN\n\n` +
-        `¿Reiniciar a "${targetUser.name}"?\n\n` +
-        `✅ El usuario SEGUIRÁ REGISTRADO.\n` +
-        `✅ Sus puntos volverán a 0.\n` +
-        `✅ Podrá volver a apostar.\n` +
-        `❌ Se borrarán todos sus pronósticos actuales.`
-    );
-    
-    if (!confirmReset) return;
+    if (!confirm(`⚠️ ¿Reiniciar a "${targetUser.name}"?\nSus puntos volverán a 0 y podrá volver a apostar.`)) return;
 
     const predictionsSnapshot = await getDocs(collection(db, "predictions"));
     const batch = writeBatch(db);
@@ -151,8 +138,7 @@ async function resetUserPredictions(db, matches) {
     });
     
     if (deletedCount > 0) await batch.commit();
-    
-    alert(`✅ ¡Reparación exitosa!\n\nSe eliminaron ${deletedCount} apuestas de "${targetUser.name}".\nSus puntos ahora son 0.`);
+    alert(`✅ ¡Reparación exitosa!\nSe eliminaron ${deletedCount} apuestas de "${targetUser.name}".`);
     if (window.calculateAndRender) window.calculateAndRender();
 }
 
@@ -180,10 +166,7 @@ async function showUserPointsBreakdown(db, matches) {
     
     userPredictions.forEach(pred => {
         const match = matches.find(m => m.id === pred.matchId);
-        if (!match) {
-            breakdown += `⚠️ ${pred.matchId}: Datos no encontrados (Huérfano)\n\n`;
-            return;
-        }
+        if (!match) { breakdown += `⚠️ ${pred.matchId}: Datos no encontrados\n\n`; return; }
         
         const isFinished = match.status === "finished";
         breakdown += `${isFinished ? "✅" : "⏳"} ${match.id}: ${match.homeTeam} vs ${match.awayTeam}\n`;
@@ -214,7 +197,7 @@ async function showUserPointsBreakdown(db, matches) {
 }
 
 // ==========================================
-// 4. BORRAR USUARIO COMPLETO (PELIGROSO)
+// 4. BORRAR USUARIO COMPLETO
 // ==========================================
 async function manageUsers(db) {
     const usersSnapshot = await getDocs(collection(db, "users"));
@@ -227,10 +210,8 @@ async function manageUsers(db) {
     if (isNaN(index) || index < 0 || index >= users.length) { alert("❌ Inválido."); return; }
     
     const targetUser = users[index];
-    
-    // TRIPLE CONFIRMACIÓN PARA BORRADO
     if (!confirm(`⚠️ ¿ELIMINAR a "${targetUser.name}"?`)) return;
-    if (!confirm(`⚠️ ÚLTIMA ADVERTENCIA: Esto borrará al usuario Y todas sus apuestas para SIEMPRE. ¿Continuar?`)) return;
+    if (!confirm(`⚠️ ÚLTIMA ADVERTENCIA: Esto borrará al usuario Y todas sus apuestas para SIEMPRE.`)) return;
 
     const predictionsSnapshot = await getDocs(collection(db, "predictions"));
     const batch = writeBatch(db);
@@ -250,7 +231,58 @@ async function manageUsers(db) {
 }
 
 // ==========================================
-// 5. SINCRONIZACIÓN API
+// 5. NUEVO: RESTAURAR PRONÓSTICO DE UN USUARIO
+// ==========================================
+async function restoreUserPrediction(db, matches) {
+    const usersSnapshot = await getDocs(collection(db, "users"));
+    const users = usersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    if (users.length === 0) { alert("ℹ️ No hay usuarios."); return; }
+
+    // 1. Seleccionar usuario
+    let userList = users.map((u, i) => `${i + 1}. ${u.name}`).join('\n');
+    const userIndexInput = prompt(`👥 PASO 1: Selecciona al usuario\n\n${userList}\n\nEscribe el NÚMERO:`);
+    const userIndex = parseInt(userIndexInput) - 1;
+    if (isNaN(userIndex) || userIndex < 0 || userIndex >= users.length) { alert("❌ Inválido."); return; }
+    const targetUser = users[userIndex];
+
+    // 2. Seleccionar partido
+    const matchList = matches.map(m => `${m.id}: ${m.homeTeam} vs ${m.awayTeam} (${m.status === 'finished' ? `Final: ${m.homeScore}-${m.awayScore}` : 'Pendiente'})`).join('\n');
+    const matchIdInput = prompt(`👥 PASO 2: Usuario seleccionado: ${targetUser.name}\n\n📋 PARTIDOS:\n${matchList}\n\nEscribe el ID del partido a restaurar (ej: D1):`);
+    
+    const match = matches.find(m => m.id.toUpperCase() === matchIdInput.trim().toUpperCase());
+    if (!match) { alert("❌ Partido no encontrado."); return; }
+
+    // 3. Ingresar el pronóstico original
+    const homePred = prompt(`¿Cuántos goles apostó ${targetUser.name} para ${match.homeTeam}?`);
+    if (homePred === null) return;
+    const awayPred = prompt(`¿Cuántos goles apostó ${targetUser.name} para ${match.awayTeam}?`);
+    if (awayPred === null) return;
+
+    if (isNaN(homePred) || isNaN(awayPred) || homePred === '' || awayPred === '') {
+        alert("❌ Deben ser números válidos.");
+        return;
+    }
+
+    // 4. Guardar en Firebase
+    const predId = `${targetUser.id}_${match.id}`;
+    await setDoc(doc(db, "predictions", predId), {
+        userId: targetUser.id,
+        matchId: match.id,
+        home: parseInt(homePred),
+        away: parseInt(awayPred),
+        updatedAt: new Date()
+    });
+
+    alert(`✅ ¡Pronóstico restaurado con éxito!\n\n${targetUser.name} apostó: ${homePred} - ${awayPred}\n\nEl sistema ha recalculado sus puntos automáticamente.`);
+    
+    // 5. Actualizar la interfaz
+    if (window.calculateAndRender) {
+        window.calculateAndRender();
+    }
+}
+
+// ==========================================
+// 6. SINCRONIZACIÓN API
 // ==========================================
 export async function fetchRealResults() {
     const icon = document.getElementById('sync-icon');
