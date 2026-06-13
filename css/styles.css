@@ -31,3 +31,152 @@ body { font-family: 'Inter', sans-serif; background: linear-gradient(135deg, #0a
     from { opacity: 0; transform: translateY(-10px); }
     to { opacity: 1; transform: translateY(0); }
 }
+/* ==========================================
+   TARJETA DE APUESTA DESTACADA (HOT MATCH)
+   ========================================== */
+.featured-card {
+    background: linear-gradient(135deg, rgba(227, 24, 55, 0.15) 0%, rgba(10, 14, 39, 0.95) 50%, rgba(0, 59, 123, 0.15) 100%);
+    border: 2px solid rgba(212, 175, 55, 0.6);
+    border-radius: 1rem;
+    padding: 1.5rem;
+    box-shadow: 0 8px 32px rgba(212, 175, 55, 0.15);
+    position: relative;
+    overflow: hidden;
+    animation: featuredPulse 3s ease-in-out infinite;
+}
+
+@keyframes featuredPulse {
+    0%, 100% { box-shadow: 0 8px 32px rgba(212, 175, 55, 0.15); }
+    50% { box-shadow: 0 8px 40px rgba(212, 175, 55, 0.3); }
+}
+
+.featured-header {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    margin-bottom: 1.5rem;
+    position: relative;
+    z-index: 1;
+}
+
+.featured-badge {
+    background: linear-gradient(90deg, #E31837, #ff4d6d);
+    color: white;
+    font-size: 0.75rem;
+    font-weight: 800;
+    padding: 0.25rem 0.75rem;
+    border-radius: 9999px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    box-shadow: 0 2px 8px rgba(227, 24, 55, 0.4);
+    animation: badgePulse 1.5s ease-in-out infinite;
+}
+
+@keyframes badgePulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+}
+
+.featured-teams {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    position: relative;
+    z-index: 1;
+    margin-bottom: 1.5rem;
+}
+
+.featured-team {
+    flex: 1;
+    text-align: center;
+}
+
+.featured-team-name {
+    font-family: 'Montserrat', sans-serif;
+    font-weight: 800;
+    font-size: 1.1rem;
+    color: white;
+    margin-bottom: 0.5rem;
+    line-height: 1.2;
+}
+
+@media (min-width: 640px) {
+    .featured-team-name { font-size: 1.3rem; }
+}
+
+.featured-score-inputs {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem;
+    background: rgba(15, 23, 42, 0.8);
+    padding: 1rem;
+    border-radius: 1rem;
+    border: 1px solid rgba(212, 175, 55, 0.3);
+}
+
+.featured-score-input {
+    width: 3.5rem;
+    height: 3.5rem;
+    text-align: center;
+    background: #0f172a;
+    border: 2px solid #D4AF37;
+    color: white;
+    border-radius: 0.75rem;
+    font-size: 1.5rem;
+    font-weight: 800;
+    font-family: 'Montserrat', sans-serif;
+    transition: all 0.2s ease;
+}
+
+.featured-score-input:focus {
+    outline: none;
+    border-color: #E31837;
+    box-shadow: 0 0 0 4px rgba(227, 24, 55, 0.3);
+    transform: scale(1.1);
+}
+
+.featured-score-input:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    border-color: #475569;
+}
+
+.featured-vs {
+    font-family: 'Montserrat', sans-serif;
+    font-weight: 900;
+    font-size: 1.2rem;
+    color: #D4AF37;
+}
+
+.featured-footer {
+    text-align: center;
+    position: relative;
+    z-index: 1;
+}
+
+.featured-timer {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: rgba(227, 24, 55, 0.2);
+    border: 1px solid rgba(227, 24, 55, 0.4);
+    color: #ff99ac;
+    padding: 0.5rem 1rem;
+    border-radius: 9999px;
+    font-size: 0.9rem;
+    font-weight: 700;
+}
+
+.featured-timer.urgent {
+    background: rgba(227, 24, 55, 0.4);
+    color: white;
+    animation: urgentPulse 1s ease-in-out infinite;
+}
+
+@keyframes urgentPulse {
+    0%, 100% { background: rgba(227, 24, 55, 0.4); }
+    50% { background: rgba(227, 24, 55, 0.7); }
+}

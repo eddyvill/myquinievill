@@ -98,7 +98,8 @@ function renderMatches() {
     // ==========================================
     // LLAMADA AL BANNER DE PRÓXIMO PARTIDO
     // ==========================================
-    renderNextMatch();
+    renderFeaturedMatch(); // <--- LLAMAR A LA NUEVA FUNCIÓN AQUÍ
+    const container = document.getElementById('matches-container');
     
     const container = document.getElementById('matches-container');
     const groupMatches = matchesData.filter(m => m.group === activeGroup);
@@ -235,11 +236,19 @@ async function calculateAndRender() {
 }
 
 // ==========================================
-// BANNER DE PRÓXIMO PARTIDO
+// TARJETA DE APUESTA DESTACADA (HOT MATCH)
 // ==========================================
-function renderNextMatch() {
-    const banner = document.getElementById('next-match-banner');
-    if (!banner) return;
+let featuredTimerInterval = null;
+
+function renderFeaturedMatch() {
+    const container = document.getElementById('featured-match-card');
+    if (!container) return;
+
+    // Limpiar intervalo anterior si existe
+    if (featuredTimerInterval) {
+        clearInterval(featuredTimerInterval);
+        featuredTimerInterval = null;
+    }
 
     const now = new Date();
     const upcoming = matchesData.filter(m => m.status === 'scheduled' && new Date(m.datetime) > now);
@@ -249,48 +258,102 @@ function renderNextMatch() {
     
     if (nextMatch) {
         const matchTime = new Date(nextMatch.datetime);
-        const timeDiff = matchTime - now;
-        const hoursLeft = Math.floor(timeDiff / (1000 * 60 * 60));
-        const minsLeft = Math.floor((timeDiff % (1000 * 60 * 60)) / (1000 * 60));
+        const predKey = currentUser ? `${currentUser.uid}_${nextMatch.id}` : null;
+        const myPred = predKey && predictionsData[predKey] ? predictionsData[predKey] : { home: null, away: null };
+        const myH = myPred.home !== null ? myPred.home : '';
+        const myA = myPred.away !== null ? myPred.away : '';
         
-        let timeText = "";
-        if (hoursLeft > 24) {
-            timeText = `Faltan ${Math.floor(hoursLeft / 24)} día(s)`;
-        } else if (hoursLeft > 0) {
-            timeText = `Faltan ${hoursLeft}h ${minsLeft}m`;
-        } else {
-            timeText = `¡Cierra en ${minsLeft} minutos!`;
-        }
-
-        // NUEVO: Badge con el grupo
-        const groupBadge = `
-            <span class="bg-fifa-gold text-fifa-dark text-[10px] font-black px-2 py-1 rounded-md uppercase tracking-wide shadow-md">
-                Grupo ${nextMatch.group}
-            </span>
-        `;
-
-        banner.innerHTML = `
-            <div class="next-match-card">
-                <div class="flex items-center justify-center gap-2 mb-3">
-                    <i class="fas fa-stopwatch text-fifa-gold text-lg animate-pulse"></i>
-                    <span class="text-xs font-bold uppercase tracking-widest text-fifa-gold">¡Próximo Partido!</span>
-                    ${groupBadge}
+        // Función para actualizar el contador cada segundo
+        const updateTimer = () => {
+            const currentTime = new Date();
+            const timeDiff = matchTime - currentTime;
+            
+            if (timeDiff <= 0) {
+                container.classList.add('hidden');
+                if (featuredTimerInterval) clearInterval(featuredTimerInterval);
+                renderMatches(); // Actualizar la vista normal también
+                return;
+            }
+            
+            const hoursLeft = Math.floor(timeDiff / (1000 * 60 * 60));
+            const minsLeft = Math.floor((timeDiff % (1000 * 60 * 60)) / (1000 * 60));
+            const secsLeft = Math.floor((timeDiff % (1000 * 60)) / 1000);
+            
+            let timeText = "";
+            let isUrgent = false;
+            
+            if (hoursLeft > 24) {
+                timeText = `Faltan ${Math.floor(hoursLeft / 24)} día(s)`;
+            } else if (hoursLeft > 0) {
+                timeText = `${hoursLeft}h ${minsLeft}m ${secsLeft}s`;
+            } else {
+                timeText = `¡CIERRA EN ${minsLeft}m ${secsLeft}s!`;
+                isUrgent = true; // Menos de 1 hora, activar alarma visual
+            }
+            
+            const timerEl = document.getElementById('featured-timer-text');
+            const timerContainer = document.getElementById('featured-timer-container');
+            if (timerEl) timerEl.textContent = timeText;
+            if (timerContainer) {
+                if (isUrgent) timerContainer.classList.add('urgent');
+                else timerContainer.classList.remove('urgent');
+            }
+        };
+        
+        // Renderizar la tarjeta HTML
+        container.innerHTML = `
+            <div class="featured-card">
+                <div class="featured-header">
+                    <span class="featured-badge">🔥 Apuesta Destacada</span>
+                    <span class="text-xs font-bold uppercase tracking-widest text-fifa-gold">Grupo ${nextMatch.group}</span>
                 </div>
-                <div class="flex items-center justify-between gap-2 mb-3">
-                    <div class="flex-1 text-right font-title font-bold text-white truncate text-sm sm:text-base">${nextMatch.homeTeam}</div>
-                    <div class="bg-slate-900/80 px-3 py-1 rounded-lg border border-fifa-gold/30 text-fifa-gold font-bold text-xs sm:text-sm shrink-0">VS</div>
-                    <div class="flex-1 text-left font-title font-bold text-white truncate text-sm sm:text-base">${nextMatch.awayTeam}</div>
+                
+                <div class="featured-teams">
+                    <div class="featured-team">
+                        <div class="featured-team-name">${nextMatch.homeTeam}</div>
+                    </div>
+                    
+                    <div class="featured-score-inputs">
+                        <input type="number" inputmode="numeric" pattern="[0-9]*" 
+                            class="featured-score-input" 
+                            id="featured-input-home"
+                            value="${myH}" 
+                            onchange="window.savePrediction('${nextMatch.id}', 'home', this.value)"
+                            placeholder="-">
+                        <span class="featured-vs">VS</span>
+                        <input type="number" inputmode="numeric" pattern="[0-9]*" 
+                            class="featured-score-input" 
+                            id="featured-input-away"
+                            value="${myA}" 
+                            onchange="window.savePrediction('${nextMatch.id}', 'away', this.value)"
+                            placeholder="-">
+                    </div>
+                    
+                    <div class="featured-team">
+                        <div class="featured-team-name">${nextMatch.awayTeam}</div>
+                    </div>
                 </div>
-                <div class="text-center">
-                    <span class="inline-flex items-center gap-1 text-xs sm:text-sm text-slate-300 bg-slate-900/50 px-3 py-1 rounded-full border border-slate-700">
-                        <i class="far fa-clock text-fifa-gold"></i> ${nextMatch.date} <span class="text-fifa-gold font-bold ml-1">(${timeText})</span>
-                    </span>
+                
+                <div class="featured-footer">
+                    <div id="featured-timer-container" class="featured-timer">
+                        <i class="fas fa-stopwatch"></i>
+                        <span id="featured-timer-text">Calculando...</span>
+                    </div>
+                    <div class="text-[10px] text-slate-400 mt-2 uppercase tracking-wider">
+                        ${nextMatch.date} • Haz tu pronóstico antes del pitazo inicial
+                    </div>
                 </div>
             </div>
         `;
-        banner.classList.remove('hidden');
+        
+        container.classList.remove('hidden');
+        
+        // Iniciar el contador regresivo
+        updateTimer(); // Ejecutar inmediatamente
+        featuredTimerInterval = setInterval(updateTimer, 1000); // Actualizar cada segundo
+        
     } else {
-        banner.classList.add('hidden');
+        container.classList.add('hidden');
     }
 }
 
