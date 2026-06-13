@@ -1,7 +1,7 @@
 // js/app.js
 import { firebaseConfig, ADMIN_PASSWORD } from './config.js';
 import { allMatches } from './data.js';
-// Importamos Firebase
+
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
 import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js";
 import { getFirestore, collection, doc, setDoc, onSnapshot, getDocs, writeBatch, deleteDoc } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
@@ -15,7 +15,9 @@ let matchesData = [];
 let predictionsData = {};
 let activeGroup = 'A';
 
-// --- INICIALIZACIÓN Y AUTH ---
+// ==========================================
+// 1. AUTENTICACIÓN
+// ==========================================
 onAuthStateChanged(auth, async (user) => {
     if (user) {
         currentUser = user;
@@ -42,23 +44,27 @@ document.getElementById('btn-register').addEventListener('click', async () => {
     initApp();
 });
 
+// ==========================================
+// 2. INICIALIZACIÓN Y FUSIÓN DE DATOS
+// ==========================================
 function initApp() {
     onSnapshot(collection(db, "matches"), (snapshot) => {
-        // 1. Obtenemos los datos de Firebase (que pueden tener fechas viejas)
         const firebaseMatches = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
         
-        // 2. Fusionamos con nuestros datos maestros de data.js (que tienen las fechas correctas)
         matchesData = allMatches.map(localMatch => {
             const fbMatch = firebaseMatches.find(m => m.id === localMatch.id);
             return {
-                ...localMatch, // Priorizamos los datos locales (fecha, hora, equipos, datetime)
+                ...localMatch,
                 status: fbMatch ? fbMatch.status : localMatch.status,
                 homeScore: fbMatch ? fbMatch.homeScore : localMatch.homeScore,
                 awayScore: fbMatch ? fbMatch.awayScore : localMatch.awayScore
             };
         });
 
-        // 3. Renderizamos con los datos ya corregidos
+        // <-- AGREGAR ESTAS 2 LÍNEAS PARA QUE EL ADMIN PUEDA VER LOS DATOS
+        window.matchesData = matchesData;
+        window.db = db;
+
         renderTabs();
         renderMatches();
     });
@@ -68,9 +74,11 @@ function initApp() {
         snapshot.docs.forEach(doc => { predictionsData[doc.id] = doc.data(); });
         calculateAndRender();
     });
-}
+}   
 
-// --- RENDERIZADO ---
+// ==========================================
+// 3. RENDERIZADO DE INTERFAZ
+// ==========================================
 window.setGroup = function(group) {
     activeGroup = group;
     renderTabs();
@@ -128,9 +136,12 @@ function renderMatches() {
     }).join('');
 }
 
-// --- LÓGICA DE PUNTOS Y TABLAS ---
+// ==========================================
+// 4. LÓGICA DE PUNTUACIÓN (5 - 3 - 1 - 0)
+// ==========================================
 function calculateAndRender() {
     if (matchesData.length === 0) return;
+    
     let leaderboard = {};
     let userStats = { score: 0, exacts: 0 };
 
@@ -138,47 +149,91 @@ function calculateAndRender() {
         const isFinished = match.status === "finished";
         const predKey = `${currentUser.uid}_${match.id}`;
         const myPred = predictionsData[predKey];
+        
         match.myHome = myPred ? myPred.home : null;
         match.myAway = myPred ? myPred.away : null;
-        match.resultClass = "";
+        match.resultClass = ""; // Resetear clase visual
 
+        // --- CÁLCULO PARA EL USUARIO ACTUAL ---
         if (isFinished && myPred && myPred.home !== null && match.homeScore !== null) {
+            const predDiff = myPred.home - myPred.away;
+            const actualDiff = match.homeScore - match.awayScore;
+
             if (myPred.home === match.homeScore && myPred.away === match.awayScore) {
-                userStats.score += 4; userStats.exacts += 1; match.resultClass = "exact-match";
-            } else if ((myPred.home > myPred.away && match.homeScore > match.awayScore) || 
-                       (myPred.home < myPred.away && match.homeScore < match.awayScore) || 
-                       (myPred.home === myPred.away && match.homeScore === match.awayScore)) {
-                userStats.score += 3; match.resultClass = "winner-match";
+                // NIVEL 1: Marcador Exacto (5 pts)
+                userStats.score += 5;
+                userStats.exacts += 1;
+                match.resultClass = "exact-match";
+            } else if (
+                (myPred.home > myPred.away && match.homeScore > match.awayScore) ||
+                (myPred.home < myPred.away && match.homeScore < match.awayScore) ||
+                (myPred.home === myPred.away && match.homeScore === match.awayScore)
+            ) {
+                // NIVEL 2: Resultado Correcto (3 pts)
+                userStats.score += 3;
+                match.resultClass = "winner-match";
+            } else if (predDiff === actualDiff) {
+                // NIVEL 3: Diferencia de Goles Correcta (1 pt)
+                userStats.score += 1;
+                match.resultClass = "winner-match"; // Mismo color amarillo para "parcialmente correcto"
             } else {
+                // NIVEL 4: Fallo Total (0 pts)
                 match.resultClass = "lost-match";
             }
         }
 
+        // --- CÁLCULO PARA EL LEADERBOARD (Todos los jugadores) ---
         Object.keys(predictionsData).forEach(key => {
             if (!key.endsWith(`_${match.id}`)) return;
+            
             const [uid] = key.split('_');
             const pred = predictionsData[key];
-            if (!leaderboard[uid]) leaderboard[uid] = { name: "...", exacts: 0, score: 0 };
+            
+            if (!leaderboard[uid]) {
+                leaderboard[uid] = { name: "...", exacts: 0, score: 0 };
+            }
+
             if (isFinished && pred.home !== null && match.homeScore !== null) {
-                if (pred.home === match.homeScore && pred.away === match.awayScore) { leaderboard[uid].score += 4; leaderboard[uid].exacts += 1; }
-                else if ((pred.home > pred.away && match.homeScore > match.awayScore) || (pred.home < pred.away && match.homeScore < match.awayScore) || (pred.home === pred.away && match.homeScore === match.awayScore)) { leaderboard[uid].score += 3; }
+                const predDiff = pred.home - pred.away;
+                const actualDiff = match.homeScore - match.awayScore;
+
+                if (pred.home === match.homeScore && pred.away === match.awayScore) {
+                    leaderboard[uid].score += 5;
+                    leaderboard[uid].exacts += 1;
+                } else if (
+                    (pred.home > pred.away && match.homeScore > match.awayScore) ||
+                    (pred.home < pred.away && match.homeScore < match.awayScore) ||
+                    (pred.home === pred.away && match.homeScore === match.awayScore)
+                ) {
+                    leaderboard[uid].score += 3;
+                } else if (predDiff === actualDiff) {
+                    leaderboard[uid].score += 1;
+                }
             }
         });
     });
 
+    // Actualizar UI
     document.getElementById('user-score').textContent = userStats.score;
+    
     getDocs(collection(db, "users")).then(snapshot => {
-        snapshot.docs.forEach(doc => { if (leaderboard[doc.id]) leaderboard[doc.id].name = doc.data().name; });
+        snapshot.docs.forEach(doc => { 
+            if (leaderboard[doc.id]) leaderboard[doc.id].name = doc.data().name; 
+        });
         document.getElementById('total-players').textContent = Object.keys(leaderboard).length;
+        
         const sorted = Object.values(leaderboard).sort((a, b) => b.score - a.score);
         renderLeaderboard(sorted);
-        renderMatches(); 
+        renderMatches(); // Re-renderizar para aplicar los colores de borde
     });
 }
 
 function renderLeaderboard(data) {
     const tbody = document.getElementById('leaderboard-body');
-    if (data.length === 0) { tbody.innerHTML = `<tr><td colspan="4" class="text-center py-4 text-slate-500">Sin datos</td></tr>`; return; }
+    if (data.length === 0) { 
+        tbody.innerHTML = `<tr><td colspan="4" class="text-center py-4 text-slate-500">Sin datos</td></tr>`; 
+        return; 
+    }
     tbody.innerHTML = data.map((p, i) => {
         const isMe = p.name === localStorage.getItem(`quiniela_name_${currentUser.uid}`);
         const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `#${i+1}`;
@@ -191,24 +246,39 @@ function renderLeaderboard(data) {
     }).join('');
 }
 
+// ==========================================
+// 5. TABLA DE CLASIFICACIÓN DE GRUPOS
+// ==========================================
 window.openStandings = function() {
     document.getElementById('standings-group-title').textContent = activeGroup;
     calculateGroupStandings(activeGroup);
     document.getElementById('standings-modal').classList.remove('hidden');
-}
+};
 
 function calculateGroupStandings(group) {
     const groupMatches = matchesData.filter(m => m.group === group && m.status === "finished");
     const teams = {};
     const uniqueTeams = new Set();
-    matchesData.filter(m => m.group === group).forEach(m => { uniqueTeams.add(m.homeTeam); uniqueTeams.add(m.awayTeam); });
-    uniqueTeams.forEach(team => { teams[team] = { name: team, pj: 0, g: 0, e: 0, p: 0, gf: 0, gc: 0, dg: 0, pts: 0 }; });
+    
+    matchesData.filter(m => m.group === group).forEach(m => { 
+        uniqueTeams.add(m.homeTeam); 
+        uniqueTeams.add(m.awayTeam); 
+    });
+    
+    uniqueTeams.forEach(team => { 
+        teams[team] = { name: team, pj: 0, g: 0, e: 0, p: 0, gf: 0, gc: 0, dg: 0, pts: 0 }; 
+    });
 
     groupMatches.forEach(match => {
-        const home = teams[match.homeTeam]; const away = teams[match.awayTeam];
-        const hScore = match.homeScore; const aScore = match.awayScore;
-        home.pj++; away.pj++; home.gf += hScore; home.gc += aScore; home.dg = home.gf - home.gc;
+        const home = teams[match.homeTeam]; 
+        const away = teams[match.awayTeam];
+        const hScore = match.homeScore; 
+        const aScore = match.awayScore;
+        
+        home.pj++; away.pj++; 
+        home.gf += hScore; home.gc += aScore; home.dg = home.gf - home.gc;
         away.gf += aScore; away.gc += hScore; away.dg = away.gf - away.gc;
+        
         if (hScore > aScore) { home.g++; home.pts += 3; away.p++; } 
         else if (hScore < aScore) { away.g++; away.pts += 3; home.p++; } 
         else { home.e++; home.pts += 1; away.e++; away.pts += 1; }
@@ -234,7 +304,9 @@ function calculateGroupStandings(group) {
     `).join('');
 }
 
-// --- ACCIONES DE USUARIO ---
+// ==========================================
+// 6. ACCIONES DE USUARIO
+// ==========================================
 window.savePrediction = async function(matchId, team, value) {
     if (!currentUser) return;
     const predKey = `${currentUser.uid}_${matchId}`;
@@ -259,7 +331,9 @@ document.querySelectorAll('.btn-close-modal').forEach(btn => {
 document.getElementById('nav-leaderboard').addEventListener('click', () => document.getElementById('leaderboard-modal').classList.remove('hidden'));
 document.getElementById('nav-standings').addEventListener('click', window.openStandings);
 
-// --- IMPORTAR ADMIN Y API ---
+// ==========================================
+// 7. CARGA DINÁMICA DE ADMIN Y API
+// ==========================================
 import('./admin.js').then(module => {
     window.showAdminPanel = module.showAdminPanel;
     window.fetchRealResults = module.fetchRealResults;
