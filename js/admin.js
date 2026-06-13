@@ -1,6 +1,6 @@
 // js/admin.js
 import { ADMIN_PASSWORD } from './config.js';
-import { doc, setDoc, writeBatch } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
+import { doc, setDoc, writeBatch, deleteDoc, getDocs, collection } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
 import { allMatches } from './data.js';
 
 export async function showAdminPanel() {
@@ -10,15 +10,33 @@ export async function showAdminPanel() {
         return;
     }
     
-    // Obtenemos los datos expuestos desde app.js
     const matches = window.matchesData || [];
     const db = window.db;
 
-    if (!matches || matches.length === 0) {
-        alert("⚠️ Esperando a que carguen los datos de los partidos. Intenta en un segundo.");
+    if (!matches || !db) {
+        alert("⚠️ Esperando a que carguen los datos. Intenta en un segundo.");
         return;
     }
     
+    // --- MENÚ PRINCIPAL DEL ADMIN ---
+    const mainAction = prompt(
+        "🛠️ PANEL DE ADMINISTRACIÓN\n\n" +
+        "1. Gestionar Resultados de Partidos\n" +
+        "2. Gestionar Usuarios (Borrar usuario de prueba)\n\n" +
+        "Elige 1 o 2:"
+    );
+
+    if (mainAction === '2') {
+        await manageUsers(db);
+        return;
+    }
+
+    if (mainAction !== '1') {
+        alert("Acción cancelada o no válida.");
+        return;
+    }
+
+    // --- LÓGICA DE GESTIÓN DE PARTIDOS (La que ya teníamos) ---
     const finishedMatches = matches.filter(m => m.status === "finished");
     const upcomingMatches = matches.filter(m => m.status === "scheduled");
     
@@ -42,18 +60,58 @@ export async function showAdminPanel() {
         }
     }
     
-    const matchIdInput = prompt(`${message}\n\nEscribe el ID del partido a actualizar (ej: A1, D1):`);
-    
+    const matchIdInput = prompt(`${message}\n\nEscribe el ID del partido (ej: A1, D1):`);
     if (!matchIdInput) return;
     
-    // Buscamos el partido ignorando mayúsculas/minúsculas
     const match = matches.find(m => m.id.toUpperCase() === matchIdInput.trim().toUpperCase());
-    
     if (!match) {
-        alert(`❌ Partido con ID "${matchIdInput}" no encontrado. Verifica que esté en la lista.`);
+        alert(`❌ Partido con ID "${matchIdInput}" no encontrado.`);
         return;
     }
     
+    const currentStatus = match.status === "finished" ? `FINALIZADO (${match.homeScore}-${match.awayScore})` : "POR JUGAR";
+    
+    const action = prompt(
+        `Partido: ${match.homeTeam} vs ${match.awayTeam}\n` +
+        `Estado actual: ${currentStatus}\n\n` +
+        `Elige una acción:\n` +
+        `1. Actualizar / Forzar resultado\n` +
+        `2. REVERTIR a "Por Jugar" (Borrar marcador y desbloquear apuestas)\n\n` +
+        `Escribe 1 o 2:`
+    );
+
+    if (action === '2') {
+        const confirmRevert = confirm(
+            `⚠️ ¿Estás seguro de REVERTIR este partido?\n\n` +
+            `Se borrará el marcador y las apuestas para este partido se desbloquearán.\n` +
+            `Los puntos de los jugadores se recalcularán automáticamente.\n\n` +
+            `${match.homeTeam} vs ${match.awayTeam}`
+        );
+        
+        if (!confirmRevert) return;
+
+        try {
+            await setDoc(doc(db, "matches", match.id), {
+                status: "scheduled",
+                homeScore: null,
+                awayScore: null,
+                updatedAt: new Date()
+            }, { merge: true });
+            
+            alert(`✅ ¡Partido revertido con éxito!\n\nLas apuestas para ${match.homeTeam} vs ${match.awayTeam} están desbloqueadas.`);
+            if (window.calculateAndRender) window.calculateAndRender();
+        } catch (error) {
+            console.error("Error al revertir:", error);
+            alert("❌ Error al actualizar la base de datos.");
+        }
+        return;
+    }
+
+    if (action !== '1') {
+        alert("Acción cancelada o no válida.");
+        return;
+    }
+
     const homeScore = prompt(`Goles de ${match.homeTeam}:`);
     if (homeScore === null) return;
     
@@ -65,28 +123,100 @@ export async function showAdminPanel() {
         return;
     }
     
-    const matchRef = doc(db, "matches", match.id);
-    
     try {
-        await setDoc(matchRef, {
+        await setDoc(doc(db, "matches", match.id), {
             status: "finished",
             homeScore: parseInt(homeScore),
             awayScore: parseInt(awayScore),
             updatedAt: new Date()
         }, { merge: true });
         
-        alert(`✅ ¡Éxito!\n\n${match.homeTeam} ${homeScore} - ${awayScore} ${match.awayTeam}\n\nLos puntos se han recalculado automáticamente.`);
-        
-        // Forzar recálculo en la app principal
-        if (window.calculateAndRender) {
-            window.calculateAndRender();
-        }
+        alert(`✅ ¡Éxito!\n\n${match.homeTeam} ${homeScore} - ${awayScore} ${match.awayTeam}\n\nLos puntos se han recalculado.`);
+        if (window.calculateAndRender) window.calculateAndRender();
     } catch (error) {
         console.error("Error al actualizar:", error);
-        alert("❌ Error al actualizar en la base de datos. Revisa la consola.");
+        alert("❌ Error al actualizar en la base de datos.");
     }
 }
 
+// ==========================================
+// NUEVA FUNCIÓN: GESTIÓN DE USUARIOS
+// ==========================================
+async function manageUsers(db) {
+    try {
+        const usersSnapshot = await getDocs(collection(db, "users"));
+        const users = usersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        
+        if (users.length === 0) {
+            alert("ℹ️ No hay usuarios registrados en la base de datos.");
+            return;
+        }
+
+        let userList = "👥 USUARIOS REGISTRADOS:\n\n";
+        users.forEach((u, index) => {
+            // Mostramos solo los primeros 8 caracteres del UID por seguridad y limpieza visual
+            userList += `${index + 1}. ${u.name} (ID: ${u.id.substring(0, 8)}...)\n`;
+        });
+        
+        const userToDeleteIndex = prompt(
+            `${userList}\n` +
+            `Escribe el NÚMERO del usuario que deseas ELIMINAR permanentemente:\n` +
+            `(Ejemplo: si quieres borrar a "Juan", y está en el número 2, escribe 2)`
+        );
+        
+        const index = parseInt(userToDeleteIndex) - 1;
+        
+        if (isNaN(index) || index < 0 || index >= users.length) {
+            alert("❌ Selección inválida. Operación cancelada.");
+            return;
+        }
+        
+        const targetUser = users[index];
+        const confirmDelete = confirm(
+            `⚠️ ¡ATENCIÓN!\n\n` +
+            `¿Estás SEGURO de eliminar a "${targetUser.name}"?\n\n` +
+            `Esta acción borrará al usuario Y TODAS sus apuestas de la base de datos.\n` +
+            `Esta acción NO se puede deshacer.`
+        );
+        
+        if (!confirmDelete) return;
+
+        // 1. Buscar y eliminar todas las predicciones de este usuario
+        const predictionsSnapshot = await getDocs(collection(db, "predictions"));
+        const batch = writeBatch(db);
+        let deletedPredictions = 0;
+        
+        predictionsSnapshot.docs.forEach(docSnapshot => {
+            const predData = docSnapshot.data();
+            if (predData.userId === targetUser.id) {
+                batch.delete(docSnapshot.ref);
+                deletedPredictions++;
+            }
+        });
+        
+        if (deletedPredictions > 0) {
+            await batch.commit();
+        }
+        
+        // 2. Eliminar el documento del usuario
+        await deleteDoc(doc(db, "users", targetUser.id));
+        
+        alert(`✅ ¡Éxito!\n\nUsuario "${targetUser.name}" y sus ${deletedPredictions} apuestas han sido eliminados permanentemente.\n\nLa tabla de posiciones se ha actualizado.`);
+        
+        // 3. Forzar actualización de la interfaz
+        if (window.calculateAndRender) {
+            window.calculateAndRender();
+        }
+        
+    } catch (error) {
+        console.error("Error al gestionar usuarios:", error);
+        alert("❌ Ocurrió un error al eliminar el usuario. Revisa la consola.");
+    }
+}
+
+// ==========================================
+// SINCRONIZACIÓN CON API (Sin cambios)
+// ==========================================
 export async function fetchRealResults() {
     const icon = document.getElementById('sync-icon');
     icon.classList.add('fa-spin');
@@ -140,8 +270,6 @@ export async function fetchRealResults() {
         alert("❌ Error de conexión con el proxy.");
     } finally {
         icon.classList.remove('fa-spin');
-        if (window.calculateAndRender) {
-            window.calculateAndRender();
-        }
+        if (window.calculateAndRender) window.calculateAndRender();
     }
 }
