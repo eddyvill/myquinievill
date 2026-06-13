@@ -1,0 +1,19 @@
+/* css/styles.css */
+body { font-family: 'Inter', sans-serif; background: linear-gradient(135deg, #0a0e27 0%, #1a1f4d 50%, #0f172a 100%); color: #e2e8f0; min-height: 100vh; padding-bottom: 90px; }
+.font-title { font-family: 'Montserrat', sans-serif; }
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+.match-card { transition: all 0.3s ease; backdrop-filter: blur(10px); }
+.score-input { width: 2.8rem; height: 2.8rem; text-align: center; background: #0f172a; border: 2px solid #334155; color: white; border-radius: 0.5rem; font-size: 1.1rem; font-weight: bold; transition: all 0.2s ease; }
+@media (min-width: 640px) { .score-input { width: 3.5rem; height: 3.5rem; font-size: 1.25rem; } }
+.score-input:focus { outline: none; border-color: #D4AF37; box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.3); transform: scale(1.05); }
+.score-input:disabled { opacity: 0.4; cursor: not-allowed; background: #1e293b; border-color: #475569; }
+.exact-match { background: rgba(16, 185, 129, 0.15); border-left: 4px solid #10b981; }
+.winner-match { background: rgba(234, 179, 8, 0.15); border-left: 4px solid #eab308; }
+.lost-match { background: rgba(239, 68, 68, 0.1); border-left: 4px solid #ef4444; }
+.tab-btn { transition: all 0.2s; white-space: nowrap; }
+.tab-btn.active { background: #D4AF37; color: #0a0e27; font-weight: 800; border-color: #D4AF37; }
+.modal { background: rgba(10, 14, 39, 0.95); backdrop-filter: blur(10px); }
+.locked-badge { background: rgba(239, 68, 68, 0.2); color: #fca5a5; border: 1px solid #ef4444; }
+.standings-row:nth-child(1) td, .standings-row:nth-child(2) td { border-left: 3px solid #10b981; }
+.standings-row:nth-child(3) td, .standings-row:nth-child(4) td { border-left: 3px solid #ef4444; }
