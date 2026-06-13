@@ -14,7 +14,7 @@ let currentUser = null;
 let matchesData = [];
 let predictionsData = {};
 let activeGroup = 'A';
-let featuredTimerInterval = null; // Para el contador de la tarjeta destacada
+let featuredTimerInterval = null;
 
 // ==========================================
 // 1. AUTENTICACIÓN
@@ -95,6 +95,27 @@ function renderTabs() {
     `).join('');
 }
 
+// --- FUNCIÓN NUEVA: CALCULAR ESTADÍSTICAS DEL PARTIDO ---
+function getMatchStats(matchId) {
+    const preds = Object.values(predictionsData).filter(p => p.matchId === matchId && p.home !== null && p.away !== null);
+    const total = preds.length;
+    if (total === 0) return null;
+
+    let homeWins = 0, draws = 0, awayWins = 0;
+    preds.forEach(p => {
+        if (p.home > p.away) homeWins++;
+        else if (p.home === p.away) draws++;
+        else awayWins++;
+    });
+
+    return {
+        total,
+        homePct: Math.round((homeWins / total) * 100),
+        drawPct: Math.round((draws / total) * 100),
+        awayPct: Math.round((awayWins / total) * 100)
+    };
+}
+
 // --- TARJETA DE APUESTA DESTACADA (HOT MATCH) ---
 function renderFeaturedMatch() {
     const container = document.getElementById('featured-match-card');
@@ -118,6 +139,42 @@ function renderFeaturedMatch() {
         const myH = myPred.home !== null ? myPred.home : '';
         const myA = myPred.away !== null ? myPred.away : '';
         
+        // Obtener estadísticas
+        const stats = getMatchStats(nextMatch.id);
+        let statsHTML = '';
+        
+        if (stats) {
+            statsHTML = `
+                <div class="mt-4 pt-4 border-t border-slate-700/50">
+                    <p class="text-[10px] text-slate-400 uppercase tracking-wider text-center mb-2 flex items-center justify-center gap-1">
+                        <i class="fas fa-chart-pie text-fifa-gold"></i> Tendencia de las apuestas (${stats.total} votos)
+                    </p>
+                    <div class="flex items-center gap-2 text-xs font-bold mb-1">
+                        <span class="text-emerald-400 w-8 text-right">${stats.homePct}%</span>
+                        <div class="flex-1 h-2.5 bg-slate-700 rounded-full overflow-hidden flex">
+                            <div class="bg-emerald-500 h-full transition-all duration-500" style="width: ${stats.homePct}%"></div>
+                            <div class="bg-slate-500 h-full transition-all duration-500" style="width: ${stats.drawPct}%"></div>
+                            <div class="bg-red-500 h-full transition-all duration-500" style="width: ${stats.awayPct}%"></div>
+                        </div>
+                        <span class="text-red-400 w-8 text-left">${stats.awayPct}%</span>
+                    </div>
+                    <div class="flex justify-between text-[10px] text-slate-500 px-1">
+                        <span>Gana ${nextMatch.homeTeam.split(' ').pop()}</span>
+                        <span>Empate</span>
+                        <span>Gana ${nextMatch.awayTeam.split(' ').pop()}</span>
+                    </div>
+                </div>
+            `;
+        } else {
+            statsHTML = `
+                <div class="mt-4 pt-4 border-t border-slate-700/50 text-center">
+                    <p class="text-[10px] text-slate-500 uppercase tracking-wider">
+                        <i class="fas fa-info-circle mr-1"></i> Sé el primero en apostar a este partido
+                    </p>
+                </div>
+            `;
+        }
+
         const updateTimer = () => {
             const currentTime = new Date();
             const timeDiff = matchTime - currentTime;
@@ -173,13 +230,11 @@ function renderFeaturedMatch() {
                         <div class="featured-team-name">${nextMatch.awayTeam}</div>
                     </div>
                 </div>
-                <div class="featured-footer">
+                ${statsHTML}
+                <div class="featured-footer mt-4">
                     <div id="featured-timer-container" class="featured-timer">
                         <i class="fas fa-stopwatch"></i>
                         <span id="featured-timer-text">Calculando...</span>
-                    </div>
-                    <div class="text-[10px] text-slate-400 mt-2 uppercase tracking-wider">
-                        ${nextMatch.date} • Haz tu pronóstico antes del pitazo inicial
                     </div>
                 </div>
             </div>
@@ -193,7 +248,7 @@ function renderFeaturedMatch() {
 }
 
 function renderMatches() {
-    renderFeaturedMatch(); // Llama a la tarjeta destacada
+    renderFeaturedMatch();
     
     const container = document.getElementById('matches-container');
     const groupMatches = matchesData.filter(m => m.group === activeGroup);
@@ -241,7 +296,6 @@ function renderMatches() {
 async function calculateAndRender() {
     if (matchesData.length === 0) return;
     
-    // 1. Obtener TODOS los usuarios para que nadie desaparezca
     const usersSnapshot = await getDocs(collection(db, "users"));
     let leaderboard = {};
     
