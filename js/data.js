@@ -17,8 +17,8 @@ export const allMatches = [
     { id: "B6", group: "B", homeTeam: "🇨🇭 Suiza", awayTeam: "🇨🇦 Canadá", date: "24/06 16:00", datetime: "2026-06-24T16:00:00-04:00", status: "scheduled", homeScore: null, awayScore: null },
 
     // GRUPO C
-    { id: "C1", group: "C", homeTeam: "🇧🇷 Brasil", awayTeam: "🇲🇦 Marruecos", date: "13/06 13:00", datetime: "2026-06-13T13:00:00-04:00", status: "scheduled", homeScore: null, awayScore: null },
-    { id: "C2", group: "C", homeTeam: "🇭🇹 Haití", awayTeam: "🏴󠁧󠁢󠁳󠁣󠁴󠁿 Escocia", date: "13/06 16:00", datetime: "2026-06-13T16:00:00-04:00", status: "scheduled", homeScore: null, awayScore: null },
+    { id: "C1", group: "C", homeTeam: "🇧🇷 Brasil", awayTeam: "🇲🇦 Marruecos", date: "13/06 18:00", datetime: "2026-06-13T18:00:00-04:00", status: "scheduled", homeScore: null, awayScore: null },
+    { id: "C2", group: "C", homeTeam: "🇭🇹 Haití", awayTeam: "🏴󠁧󠁢󠁳󠁣󠁴󠁿 Escocia", date: "13/06 21:00", datetime: "2026-06-13T21:00:00-04:00", status: "scheduled", homeScore: null, awayScore: null },
     { id: "C3", group: "C", homeTeam: "🏴󠁧󠁢󠁳󠁣󠁴󠁿 Escocia", awayTeam: "🇲🇦 Marruecos", date: "19/06 13:00", datetime: "2026-06-19T13:00:00-04:00", status: "scheduled", homeScore: null, awayScore: null },
     { id: "C4", group: "C", homeTeam: "🇧🇷 Brasil", awayTeam: "🇭🇹 Haití", date: "19/06 16:00", datetime: "2026-06-19T16:00:00-04:00", status: "scheduled", homeScore: null, awayScore: null },
     { id: "C5", group: "C", homeTeam: "🏴󠁧󠁢󠁳󠁣󠁴󠁿 Escocia", awayTeam: "🇧🇷 Brasil", date: "25/06 16:00", datetime: "2026-06-25T16:00:00-04:00", status: "scheduled", homeScore: null, awayScore: null },
