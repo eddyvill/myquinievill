@@ -4,7 +4,7 @@ import { allMatches } from './data.js';
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
 import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js";
-import { getFirestore, collection, doc, setDoc, onSnapshot, getDocs, writeBatch, deleteDoc } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
+import { getFirestore, collection, doc, setDoc, onSnapshot, getDocs, writeBatch, deleteDoc, query, where } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
 
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
@@ -17,17 +17,19 @@ let activeGroup = 'A';
 let featuredTimerInterval = null;
 
 // ==========================================
-// 1. AUTENTICACIÓN
+// 1. AUTENTICACIÓN CON RECUPERACIÓN DE CUENTA
 // ==========================================
 onAuthStateChanged(auth, async (user) => {
     if (user) {
         currentUser = user;
         const savedName = localStorage.getItem(`quiniela_name_${user.uid}`);
+        
         if (savedName) {
             document.getElementById('user-display').textContent = `👤 ${savedName}`;
             document.getElementById('login-modal').classList.add('hidden');
             initApp();
         } else {
+            // No tiene nombre guardado, mostrar modal
             document.getElementById('login-modal').classList.remove('hidden');
         }
     } else {
@@ -38,12 +40,102 @@ onAuthStateChanged(auth, async (user) => {
 document.getElementById('btn-register').addEventListener('click', async () => {
     const name = document.getElementById('username-input').value.trim();
     if (!name) return alert("Ingresa un nombre");
+    
+    // Verificar si el nombre ya existe en la base de datos
+    const usersRef = collection(db, "users");
+    const q = query(usersRef, where("name", "==", name));
+    const snapshot = await getDocs(q);
+    
+    if (!snapshot.empty) {
+        // El nombre ya existe, preguntar si quiere recuperar
+        const existingUser = snapshot.docs[0].data();
+        const existingUid = snapshot.docs[0].id;
+        
+        const confirmRecovery = confirm(
+            `⚠️ El nombre "${name}" ya está registrado.\n\n` +
+            `¿Eres tú y quieres recuperar tu cuenta?\n\n` +
+            `Se migrarán todos tus puntos y pronósticos a esta sesión.`
+        );
+        
+        if (confirmRecovery) {
+            // Migrar la cuenta al nuevo UID
+            await migrateAccount(existingUid, currentUser.uid, name);
+            return;
+        } else {
+            alert("Por favor, elige otro nombre.");
+            return;
+        }
+    }
+    
+    // Nombre nuevo, registrar normalmente
     localStorage.setItem(`quiniela_name_${currentUser.uid}`, name);
     document.getElementById('user-display').textContent = `👤 ${name}`;
     document.getElementById('login-modal').classList.add('hidden');
-    await setDoc(doc(db, "users", currentUser.uid), { name, uid: currentUser.uid, lastActive: new Date() }, { merge: true });
+    
+    await setDoc(doc(db, "users", currentUser.uid), { 
+        name, 
+        uid: currentUser.uid, 
+        lastActive: new Date() 
+    }, { merge: true });
+    
     initApp();
 });
+
+// ==========================================
+// FUNCIÓN: MIGRAR CUENTA DE UN UID A OTRO
+// ==========================================
+async function migrateAccount(oldUid, newUid, name) {
+    try {
+        const batch = writeBatch(db);
+        
+        // 1. Actualizar el documento del usuario con el nuevo UID
+        const userRef = doc(db, "users", newUid);
+        batch.set(userRef, { 
+            name, 
+            uid: newUid, 
+            lastActive: new Date() 
+        }, { merge: true });
+        
+        // 2. Migrar todas las predicciones del UID viejo al nuevo
+        const predictionsRef = collection(db, "predictions");
+        const q = query(predictionsRef, where("userId", "==", oldUid));
+        const predictionsSnapshot = await getDocs(q);
+        
+        predictionsSnapshot.docs.forEach(docSnap => {
+            const predData = docSnap.data();
+            const newPredId = `${newUid}_${predData.matchId}`;
+            const newPredRef = doc(db, "predictions", newPredId);
+            
+            batch.set(newPredRef, {
+                ...predData,
+                userId: newUid
+            });
+            
+            // Borrar la predicción vieja
+            batch.delete(docSnap.ref);
+        });
+        
+        // 3. Borrar el documento del usuario viejo
+        const oldUserRef = doc(db, "users", oldUid);
+        batch.delete(oldUserRef);
+        
+        // Ejecutar el batch
+        await batch.commit();
+        
+        // 4. Guardar en localStorage
+        localStorage.setItem(`quiniela_name_${newUid}`, name);
+        document.getElementById('user-display').textContent = `👤 ${name}`;
+        document.getElementById('login-modal').classList.add('hidden');
+        
+        alert(`✅ ¡Cuenta recuperada con éxito!\n\nTodos tus puntos y pronósticos han sido restaurados.`);
+        
+        initApp();
+        
+    } catch (error) {
+        console.error("Error al migrar cuenta:", error);
+        alert("❌ Error al recuperar la cuenta. Intenta de nuevo.");
+    }
+}
 
 // ==========================================
 // 2. INICIALIZACIÓN Y FUSIÓN DE DATOS
@@ -95,7 +187,6 @@ function renderTabs() {
     `).join('');
 }
 
-// --- FUNCIÓN NUEVA: CALCULAR ESTADÍSTICAS DEL PARTIDO ---
 function getMatchStats(matchId) {
     const preds = Object.values(predictionsData).filter(p => p.matchId === matchId && p.home !== null && p.away !== null);
     const total = preds.length;
@@ -116,7 +207,6 @@ function getMatchStats(matchId) {
     };
 }
 
-// --- TARJETA DE APUESTA DESTACADA (HOT MATCH) ---
 function renderFeaturedMatch() {
     const container = document.getElementById('featured-match-card');
     if (!container) return;
@@ -139,7 +229,6 @@ function renderFeaturedMatch() {
         const myH = myPred.home !== null ? myPred.home : '';
         const myA = myPred.away !== null ? myPred.away : '';
         
-        // Obtener estadísticas
         const stats = getMatchStats(nextMatch.id);
         let statsHTML = '';
         
