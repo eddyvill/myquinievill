@@ -24,12 +24,13 @@ export async function showAdminPanel() {
         "2. 👥 Gestionar Usuarios (Borrar usuario completo)\n" +
         "3. 🔍 Ver Desglose de Puntos de un Usuario\n" +
         "4. 🧹 REPARAR: Reiniciar Apuestas de un Usuario (Puntos a 0)\n" +
-        "5. 🛠️ RESTAURAR: Poner pronóstico manual a un usuario (Recupera sus puntos)";
+        "5. 🛠️ RESTAURAR: Poner pronóstico manual a un usuario\n" +
+        "6. 🚨 EMERGENCIA: Recuperar usuario perdido manualmente";
         
     const mainAction = prompt(menuText);
 
     if (mainAction === '2') {
-        if (!confirm("⚠️ ¿Entrar a gestión de usuarios? (Esto puede llevar a borrar usuarios)")) return;
+        if (!confirm("⚠️ ¿Entrar a gestión de usuarios?")) return;
         await manageUsers(db);
         return;
     }
@@ -38,12 +39,16 @@ export async function showAdminPanel() {
         return;
     }
     if (mainAction === '4') {
-        if (!confirm("⚠️ ¿Reiniciar apuestas de un usuario? (Puntos a 0, el usuario sigue registrado)")) return;
+        if (!confirm("⚠️ ¿Reiniciar apuestas de un usuario?")) return;
         await resetUserPredictions(db, matches);
         return;
     }
     if (mainAction === '5') {
         await restoreUserPrediction(db, matches);
+        return;
+    }
+    if (mainAction === '6') {
+        await emergencyRecoverUser(db);
         return;
     }
     if (mainAction === '1') {
@@ -52,6 +57,102 @@ export async function showAdminPanel() {
     }
 
     alert("Acción cancelada o no válida.");
+}
+
+// ==========================================
+// 6. EMERGENCIA: RECUPERAR USUARIO PERDIDO
+// ==========================================
+async function emergencyRecoverUser(db) {
+    const userName = prompt("🚨 RECUPERACIÓN DE EMERGENCIA\n\nEscribe el nombre EXACTO del usuario perdido:");
+    if (!userName) return;
+    
+    // Buscar en todas las predicciones para encontrar el UID viejo
+    const predictionsSnapshot = await getDocs(collection(db, "predictions"));
+    const userPredictions = predictionsSnapshot.docs
+        .map(doc => doc.data())
+        .filter(pred => pred.matchId && pred.userId);
+    
+    // Buscar UIDs únicos que tengan predicciones
+    const uniqueUids = [...new Set(userPredictions.map(p => p.userId))];
+    
+    let foundUid = null;
+    let foundPredictions = [];
+    
+    // Buscar en cada UID si hay predicciones que coincidan con el nombre
+    for (const uid of uniqueUids) {
+        const userDoc = await getDocs(collection(db, "users"));
+        const userExists = userDoc.docs.find(d => d.id === uid);
+        
+        if (!userExists) {
+            // Este UID no tiene documento de usuario, pero tiene predicciones
+            // Es probable que sea el usuario perdido
+            const preds = userPredictions.filter(p => p.userId === uid);
+            if (preds.length > 0) {
+                foundUid = uid;
+                foundPredictions = preds;
+                break;
+            }
+        }
+    }
+    
+    if (!foundUid) {
+        alert("❌ No se encontraron predicciones huérfanas. El usuario puede haber sido borrado completamente.");
+        return;
+    }
+    
+    const confirmRecovery = confirm(
+        `🚨 USUARIO ENCONTRADO\n\n` +
+        `UID viejo: ${foundUid}\n` +
+        `Pronósticos encontrados: ${foundPredictions.length}\n\n` +
+        `¿Crear nueva cuenta con el nombre "${userName}" y migrar estos pronósticos?`
+    );
+    
+    if (!confirmRecovery) return;
+    
+    // Crear nuevo usuario con un UID nuevo
+    const newUid = `recovered_${Date.now()}_${Math.random().toString(36).substring(7)}`;
+    
+    try {
+        const batch = writeBatch(db);
+        
+        // 1. Crear el documento del usuario
+        batch.set(doc(db, "users", newUid), {
+            name: userName,
+            uid: newUid,
+            lastActive: new Date(),
+            recovered: true,
+            oldUid: foundUid
+        });
+        
+        // 2. Migrar todas las predicciones
+        foundPredictions.forEach(pred => {
+            const newPredId = `${newUid}_${pred.matchId}`;
+            batch.set(doc(db, "predictions", newPredId), {
+                ...pred,
+                userId: newUid
+            });
+            
+            // Borrar la predicción vieja
+            const oldPredId = `${foundUid}_${pred.matchId}`;
+            batch.delete(doc(db, "predictions", oldPredId));
+        });
+        
+        await batch.commit();
+        
+        alert(
+            `✅ ¡RECUPERACIÓN EXITOSA!\n\n` +
+            `Nuevo UID: ${newUid}\n` +
+            `Nombre: ${userName}\n` +
+            `Pronósticos migrados: ${foundPredictions.length}\n\n` +
+            `El usuario ahora puede entrar con su nombre y recuperar su cuenta.`
+        );
+        
+        if (window.calculateAndRender) window.calculateAndRender();
+        
+    } catch (error) {
+        console.error("Error en recuperación:", error);
+        alert("❌ Error al recuperar. Revisa la consola.");
+    }
 }
 
 // ==========================================
@@ -83,7 +184,7 @@ async function manageMatches(matches, db) {
     );
 
     if (action === '2') {
-        if (!confirm(`⚠️ ¿REVERTIR este partido?\nSe desbloquearán las apuestas y los puntos se recalcularán.`)) return;
+        if (!confirm(`⚠️ ¿REVERTIR este partido?`)) return;
         await setDoc(doc(db, "matches", match.id), { status: "scheduled", homeScore: null, awayScore: null, updatedAt: new Date() }, { merge: true });
         alert(`✅ Partido revertido.`);
         if (window.calculateAndRender) window.calculateAndRender();
@@ -119,12 +220,12 @@ async function resetUserPredictions(db, matches) {
     if (users.length === 0) { alert("ℹ️ No hay usuarios."); return; }
 
     let userList = users.map((u, i) => `${i + 1}. ${u.name}`).join('\n');
-    const userIndexInput = prompt(`👥 USUARIOS:\n\n${userList}\n\nEscribe el NÚMERO del usuario a REINICIAR (Puntos a 0):`);
+    const userIndexInput = prompt(`👥 USUARIOS:\n\n${userList}\n\nEscribe el NÚMERO del usuario a REINICIAR:`);
     const userIndex = parseInt(userIndexInput) - 1;
-    if (isNaN(userIndex) || userIndex < 0 || userIndex >= users.length) { alert("❌ Selección inválida."); return; }
+    if (isNaN(userIndex) || userIndex < 0 || userIndex >= users.length) { alert("❌ Inválido."); return; }
     
     const targetUser = users[userIndex];
-    if (!confirm(`⚠️ ¿Reiniciar a "${targetUser.name}"?\nSus puntos volverán a 0 y podrá volver a apostar.`)) return;
+    if (!confirm(`⚠️ ¿Reiniciar a "${targetUser.name}"?`)) return;
 
     const predictionsSnapshot = await getDocs(collection(db, "predictions"));
     const batch = writeBatch(db);
@@ -138,7 +239,7 @@ async function resetUserPredictions(db, matches) {
     });
     
     if (deletedCount > 0) await batch.commit();
-    alert(`✅ ¡Reparación exitosa!\nSe eliminaron ${deletedCount} apuestas de "${targetUser.name}".`);
+    alert(`✅ Se eliminaron ${deletedCount} apuestas de "${targetUser.name}".`);
     if (window.calculateAndRender) window.calculateAndRender();
 }
 
@@ -211,7 +312,7 @@ async function manageUsers(db) {
     
     const targetUser = users[index];
     if (!confirm(`⚠️ ¿ELIMINAR a "${targetUser.name}"?`)) return;
-    if (!confirm(`⚠️ ÚLTIMA ADVERTENCIA: Esto borrará al usuario Y todas sus apuestas para SIEMPRE.`)) return;
+    if (!confirm(`⚠️ ÚLTIMA ADVERTENCIA: Esto borrará al usuario Y todas sus apuestas.`)) return;
 
     const predictionsSnapshot = await getDocs(collection(db, "predictions"));
     const batch = writeBatch(db);
@@ -231,28 +332,25 @@ async function manageUsers(db) {
 }
 
 // ==========================================
-// 5. NUEVO: RESTAURAR PRONÓSTICO DE UN USUARIO
+// 5. RESTAURAR PRONÓSTICO
 // ==========================================
 async function restoreUserPrediction(db, matches) {
     const usersSnapshot = await getDocs(collection(db, "users"));
     const users = usersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
     if (users.length === 0) { alert("ℹ️ No hay usuarios."); return; }
 
-    // 1. Seleccionar usuario
     let userList = users.map((u, i) => `${i + 1}. ${u.name}`).join('\n');
     const userIndexInput = prompt(`👥 PASO 1: Selecciona al usuario\n\n${userList}\n\nEscribe el NÚMERO:`);
     const userIndex = parseInt(userIndexInput) - 1;
     if (isNaN(userIndex) || userIndex < 0 || userIndex >= users.length) { alert("❌ Inválido."); return; }
     const targetUser = users[userIndex];
 
-    // 2. Seleccionar partido
-    const matchList = matches.map(m => `${m.id}: ${m.homeTeam} vs ${m.awayTeam} (${m.status === 'finished' ? `Final: ${m.homeScore}-${m.awayScore}` : 'Pendiente'})`).join('\n');
-    const matchIdInput = prompt(`👥 PASO 2: Usuario seleccionado: ${targetUser.name}\n\n📋 PARTIDOS:\n${matchList}\n\nEscribe el ID del partido a restaurar (ej: D1):`);
+    const matchList = matches.map(m => `${m.id}: ${m.homeTeam} vs ${m.awayTeam}`).join('\n');
+    const matchIdInput = prompt(`👥 PASO 2: Usuario: ${targetUser.name}\n\n📋 PARTIDOS:\n${matchList}\n\nEscribe el ID del partido:`);
     
     const match = matches.find(m => m.id.toUpperCase() === matchIdInput.trim().toUpperCase());
     if (!match) { alert("❌ Partido no encontrado."); return; }
 
-    // 3. Ingresar el pronóstico original
     const homePred = prompt(`¿Cuántos goles apostó ${targetUser.name} para ${match.homeTeam}?`);
     if (homePred === null) return;
     const awayPred = prompt(`¿Cuántos goles apostó ${targetUser.name} para ${match.awayTeam}?`);
@@ -263,7 +361,6 @@ async function restoreUserPrediction(db, matches) {
         return;
     }
 
-    // 4. Guardar en Firebase
     const predId = `${targetUser.id}_${match.id}`;
     await setDoc(doc(db, "predictions", predId), {
         userId: targetUser.id,
@@ -273,16 +370,12 @@ async function restoreUserPrediction(db, matches) {
         updatedAt: new Date()
     });
 
-    alert(`✅ ¡Pronóstico restaurado con éxito!\n\n${targetUser.name} apostó: ${homePred} - ${awayPred}\n\nEl sistema ha recalculado sus puntos automáticamente.`);
-    
-    // 5. Actualizar la interfaz
-    if (window.calculateAndRender) {
-        window.calculateAndRender();
-    }
+    alert(`✅ Pronóstico restaurado: ${homePred} - ${awayPred}`);
+    if (window.calculateAndRender) window.calculateAndRender();
 }
 
 // ==========================================
-// 6. SINCRONIZACIÓN API
+// SINCRONIZACIÓN API
 // ==========================================
 export async function fetchRealResults() {
     const icon = document.getElementById('sync-icon');
