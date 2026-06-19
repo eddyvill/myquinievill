@@ -66,92 +66,105 @@ async function emergencyRecoverUser(db) {
     const userName = prompt("🚨 RECUPERACIÓN DE EMERGENCIA\n\nEscribe el nombre EXACTO del usuario perdido:");
     if (!userName) return;
     
-    // Buscar en todas las predicciones para encontrar el UID viejo
+    // Buscar predicciones huérfanas
     const predictionsSnapshot = await getDocs(collection(db, "predictions"));
-    const userPredictions = predictionsSnapshot.docs
-        .map(doc => doc.data())
-        .filter(pred => pred.matchId && pred.userId);
+    const allPredictions = predictionsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
     
-    // Buscar UIDs únicos que tengan predicciones
-    const uniqueUids = [...new Set(userPredictions.map(p => p.userId))];
+    // Encontrar UIDs que tengan predicciones pero NO tengan documento de usuario
+    const usersSnapshot = await getDocs(collection(db, "users"));
+    const existingUids = new Set(usersSnapshot.docs.map(doc => doc.id));
     
-    let foundUid = null;
-    let foundPredictions = [];
+    const orphanedUids = [...new Set(allPredictions.map(p => p.userId))].filter(uid => !existingUids.has(uid));
     
-    // Buscar en cada UID si hay predicciones que coincidan con el nombre
-    for (const uid of uniqueUids) {
-        const userDoc = await getDocs(collection(db, "users"));
-        const userExists = userDoc.docs.find(d => d.id === uid);
-        
-        if (!userExists) {
-            // Este UID no tiene documento de usuario, pero tiene predicciones
-            // Es probable que sea el usuario perdido
-            const preds = userPredictions.filter(p => p.userId === uid);
-            if (preds.length > 0) {
-                foundUid = uid;
-                foundPredictions = preds;
-                break;
-            }
-        }
+    if (orphanedUids.length === 0) {
+        alert("❌ No se encontraron predicciones huérfanas.");
+        return;
     }
     
-    if (!foundUid) {
-        alert("❌ No se encontraron predicciones huérfanas. El usuario puede haber sido borrado completamente.");
+    let selectedUid = null;
+    
+    if (orphanedUids.length === 1) {
+        selectedUid = orphanedUids[0];
+    } else {
+        const uidList = orphanedUids.map((uid, i) => `${i + 1}. ${uid} (${allPredictions.filter(p => p.userId === uid).length} pronósticos)`).join('\n');
+        const selection = prompt(`Se encontraron ${orphanedUids.length} UIDs huérfanos:\n\n${uidList}\n\nElige el número:`);
+        const index = parseInt(selection) - 1;
+        if (isNaN(index) || index < 0 || index >= orphanedUids.length) {
+            alert("❌ Selección inválida.");
+            return;
+        }
+        selectedUid = orphanedUids[index];
+    }
+    
+    const orphanedPredictions = allPredictions.filter(p => p.userId === selectedUid);
+    
+    // Ahora necesitamos el UID REAL de Firebase Auth del dispositivo actual
+    const currentAuthUid = window.currentUser ? window.currentUser.uid : null;
+    
+    if (!currentAuthUid) {
+        alert("❌ Error: No se pudo obtener el UID de Firebase Auth. Asegúrate de estar logueado.");
         return;
     }
     
     const confirmRecovery = confirm(
-        `🚨 USUARIO ENCONTRADO\n\n` +
-        `UID viejo: ${foundUid}\n` +
-        `Pronósticos encontrados: ${foundPredictions.length}\n\n` +
-        `¿Crear nueva cuenta con el nombre "${userName}" y migrar estos pronósticos?`
+        `🚨 RECUPERAR USUARIO\n\n` +
+        `Nombre: ${userName}\n` +
+        `UID huérfano: ${selectedUid}\n` +
+        `UID actual (Firebase Auth): ${currentAuthUid}\n` +
+        `Pronósticos a migrar: ${orphanedPredictions.length}\n\n` +
+        `¿Confirmar recuperación?`
     );
     
     if (!confirmRecovery) return;
     
-    // Crear nuevo usuario con un UID nuevo
-    const newUid = `recovered_${Date.now()}_${Math.random().toString(36).substring(7)}`;
-    
     try {
         const batch = writeBatch(db);
         
-        // 1. Crear el documento del usuario
-        batch.set(doc(db, "users", newUid), {
+        // 1. Crear/actualizar el documento del usuario con el UID REAL de Firebase Auth
+        batch.set(doc(db, "users", currentAuthUid), {
             name: userName,
-            uid: newUid,
+            uid: currentAuthUid,
             lastActive: new Date(),
             recovered: true,
-            oldUid: foundUid
+            oldUid: selectedUid
         });
         
-        // 2. Migrar todas las predicciones
-        foundPredictions.forEach(pred => {
-            const newPredId = `${newUid}_${pred.matchId}`;
+        // 2. Migrar todas las predicciones al UID REAL
+        orphanedPredictions.forEach(pred => {
+            const newPredId = `${currentAuthUid}_${pred.matchId}`;
             batch.set(doc(db, "predictions", newPredId), {
                 ...pred,
-                userId: newUid
+                userId: currentAuthUid
             });
             
             // Borrar la predicción vieja
-            const oldPredId = `${foundUid}_${pred.matchId}`;
-            batch.delete(doc(db, "predictions", oldPredId));
+            batch.delete(doc(db, "predictions", `${selectedUid}_${pred.matchId}`));
         });
+        
+        // 3. Borrar el documento viejo si existe (con UID falso)
+        if (selectedUid !== currentAuthUid) {
+            batch.delete(doc(db, "users", selectedUid));
+        }
         
         await batch.commit();
         
+        // 4. Guardar en localStorage
+        localStorage.setItem(`quiniela_name_${currentAuthUid}`, userName);
+        
         alert(
             `✅ ¡RECUPERACIÓN EXITOSA!\n\n` +
-            `Nuevo UID: ${newUid}\n` +
-            `Nombre: ${userName}\n` +
-            `Pronósticos migrados: ${foundPredictions.length}\n\n` +
-            `El usuario ahora puede entrar con su nombre y recuperar su cuenta.`
+            `Usuario: ${userName}\n` +
+            `UID real (Firebase Auth): ${currentAuthUid}\n` +
+            `Pronósticos migrados: ${orphanedPredictions.length}\n\n` +
+            `Recarga la página para ver los cambios.`
         );
         
-        if (window.calculateAndRender) window.calculateAndRender();
+        // Recargar para aplicar cambios
+        setTimeout(() => location.reload(), 1500);
         
     } catch (error) {
         console.error("Error en recuperación:", error);
-        alert("❌ Error al recuperar. Revisa la consola.");
+        alert("❌ Error al recuperar: " + error.message);
     }
 }
 
