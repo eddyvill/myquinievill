@@ -23,9 +23,10 @@ export async function showAdminPanel() {
         "1. 📝 Gestionar Resultados de Partidos\n" +
         "2. 👥 Gestionar Usuarios (Borrar usuario completo)\n" +
         "3. 🔍 Ver Desglose de Puntos de un Usuario\n" +
-        "4. 🧹 REPARAR: Reiniciar Apuestas de un Usuario (Puntos a 0)\n" +
-        "5. 🛠️ RESTAURAR: Poner pronóstico manual a un usuario\n" +
-        "6. 🚨 EMERGENCIA: Recuperar usuario perdido manualmente";
+        "4. 🧹 REPARAR: Reiniciar Apuestas de un Usuario\n" +
+        "5. 🛠️ RESTAURAR: Poner pronóstico manual\n" +
+        "6. 🚨 EMERGENCIA: Recuperar usuario perdido\n" +
+        "7. 🧼 LIMPIAR: Borrar predicciones huérfanas";
         
     const mainAction = prompt(menuText);
 
@@ -53,6 +54,10 @@ export async function showAdminPanel() {
     }
     if (mainAction === '1') {
         await manageMatches(matches, db);
+        return;
+    }
+    if (mainAction === '7') {
+        await cleanOrphanedPredictions(db);
         return;
     }
 
@@ -434,5 +439,43 @@ export async function fetchRealResults() {
     } finally {
         icon.classList.remove('fa-spin');
         if (window.calculateAndRender) window.calculateAndRender();
+    }
+}
+// ==========================================
+// 7. LIMPIAR PREDICCIONES HUÉRFANAS
+// ==========================================
+async function cleanOrphanedPredictions(db) {
+    if (!confirm("⚠️ Esto borrará todas las predicciones de usuarios que ya no existen.\n\n¿Continuar?")) return;
+    
+    try {
+        // 1. Obtener todos los UIDs de usuarios existentes
+        const usersSnapshot = await getDocs(collection(db, "users"));
+        const validUids = new Set(usersSnapshot.docs.map(doc => doc.id));
+        
+        // 2. Buscar predicciones huérfanas
+        const predictionsSnapshot = await getDocs(collection(db, "predictions"));
+        const batch = writeBatch(db);
+        let orphanedCount = 0;
+        
+        predictionsSnapshot.docs.forEach(docSnapshot => {
+            const predData = docSnapshot.data();
+            if (!validUids.has(predData.userId)) {
+                batch.delete(docSnapshot.ref);
+                orphanedCount++;
+            }
+        });
+        
+        if (orphanedCount > 0) {
+            await batch.commit();
+            alert(`✅ ¡Limpieza exitosa!\n\nSe eliminaron ${orphanedCount} predicciones huérfanas.`);
+        } else {
+            alert("✅ No hay predicciones huérfanas. Todo está limpio.");
+        }
+        
+        if (window.calculateAndRender) window.calculateAndRender();
+        
+    } catch (error) {
+        console.error("Error al limpiar:", error);
+        alert("❌ Error al limpiar predicciones.");
     }
 }

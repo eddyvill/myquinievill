@@ -463,6 +463,80 @@ function renderLeaderboard(data) {
             <td class="px-3 py-3 text-right font-bold text-fifa-gold">${p.score}</td>
         </tr>`;
     }).join('');
+}async function calculateAndRender() {
+    if (matchesData.length === 0) return;
+    if (!currentUser) return;
+    
+    // 1. Obtener TODOS los usuarios registrados
+    const usersSnapshot = await getDocs(collection(db, "users"));
+    let leaderboard = {};
+    
+    usersSnapshot.docs.forEach(doc => {
+        const userData = doc.data();
+        leaderboard[doc.id] = { name: userData.name || "Jugador", exacts: 0, score: 0, uid: doc.id };
+    });
+
+    let userStats = { score: 0, exacts: 0 };
+
+    matchesData.forEach(match => {
+        const isFinished = match.status === "finished";
+        const predKey = `${currentUser.uid}_${match.id}`;
+        const myPred = predictionsData[predKey];
+        
+        match.myHome = (myPred && myPred.home !== undefined && myPred.home !== null) ? myPred.home : null;
+        match.myAway = (myPred && myPred.away !== undefined && myPred.away !== null) ? myPred.away : null;
+        match.resultClass = "";
+
+        // Cálculo para el usuario actual
+        if (isFinished && myPred && myPred.home !== null && myPred.home !== undefined && match.homeScore !== null) {
+            const predDiff = myPred.home - myPred.away;
+            const actualDiff = match.homeScore - match.awayScore;
+
+            if (myPred.home === match.homeScore && myPred.away === match.awayScore) {
+                userStats.score += 5; userStats.exacts += 1; match.resultClass = "exact-match";
+            } else if ((myPred.home > myPred.away && match.homeScore > match.awayScore) || (myPred.home < myPred.away && match.homeScore < match.awayScore) || (myPred.home === myPred.away && match.homeScore === match.awayScore)) {
+                userStats.score += 3; match.resultClass = "winner-match";
+            } else if (predDiff === actualDiff) {
+                userStats.score += 1; match.resultClass = "winner-match";
+            } else {
+                match.resultClass = "lost-match";
+            }
+        }
+
+        // Cálculo para TODOS los jugadores (CON VERIFICACIÓN DE SEGURIDAD)
+        Object.keys(predictionsData).forEach(key => {
+            if (!key.endsWith(`_${match.id}`)) return;
+            const [uid] = key.split('_');
+            const pred = predictionsData[key];
+            
+            // 🔥 VERIFICACIÓN CRÍTICA: Si el uid no existe en el leaderboard, saltarlo
+            if (!leaderboard[uid]) {
+                console.warn(`⚠️ Predicción huérfana detectada: UID ${uid} no existe en usuarios. Ignorando.`);
+                return;
+            }
+            
+            if (isFinished && pred.home !== null && pred.home !== undefined && match.homeScore !== null) {
+                const predDiff = pred.home - pred.away;
+                const actualDiff = match.homeScore - match.awayScore;
+
+                if (pred.home === match.homeScore && pred.away === match.awayScore) {
+                    leaderboard[uid].score += 5; leaderboard[uid].exacts += 1;
+                } else if ((pred.home > pred.away && match.homeScore > match.awayScore) || (pred.home < pred.away && match.homeScore < match.awayScore) || (pred.home === pred.away && match.homeScore === match.awayScore)) {
+                    leaderboard[uid].score += 3;
+                } else if (predDiff === actualDiff) {
+                    leaderboard[uid].score += 1;
+                }
+            }
+        });
+    });
+
+    // Actualizar UI
+    document.getElementById('user-score').textContent = userStats.score;
+    document.getElementById('total-players').textContent = Object.keys(leaderboard).length;
+    
+    const sorted = Object.values(leaderboard).sort((a, b) => b.score - a.score);
+    renderLeaderboard(sorted);
+    renderMatches();
 }
 
 // ==========================================
