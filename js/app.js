@@ -29,7 +29,6 @@ onAuthStateChanged(auth, async (user) => {
             document.getElementById('login-modal').classList.add('hidden');
             initApp();
         } else {
-            // No tiene nombre guardado, mostrar modal
             document.getElementById('login-modal').classList.remove('hidden');
         }
     } else {
@@ -41,44 +40,71 @@ document.getElementById('btn-register').addEventListener('click', async () => {
     const name = document.getElementById('username-input').value.trim();
     if (!name) return alert("Ingresa un nombre");
     
-    // Verificar si el nombre ya existe en la base de datos
-    const usersRef = collection(db, "users");
-    const q = query(usersRef, where("name", "==", name));
-    const snapshot = await getDocs(q);
-    
-    if (!snapshot.empty) {
-        // El nombre ya existe, preguntar si quiere recuperar
-        const existingUser = snapshot.docs[0].data();
-        const existingUid = snapshot.docs[0].id;
+    try {
+        const usersRef = collection(db, "users");
+        const q = query(usersRef, where("name", "==", name));
+        const snapshot = await getDocs(q);
         
-        const confirmRecovery = confirm(
-            `⚠️ El nombre "${name}" ya está registrado.\n\n` +
-            `¿Eres tú y quieres recuperar tu cuenta?\n\n` +
-            `Se migrarán todos tus puntos y pronósticos a esta sesión.`
-        );
+        if (!snapshot.empty) {
+            const existingUser = snapshot.docs[0].data();
+            const existingUid = snapshot.docs[0].id;
+            
+            if (existingUid === currentUser.uid) {
+                localStorage.setItem(`quiniela_name_${currentUser.uid}`, name);
+                document.getElementById('user-display').textContent = `👤 ${name}`;
+                document.getElementById('login-modal').classList.add('hidden');
+                initApp();
+                return;
+            }
+            
+            const confirmRecovery = confirm(
+                `⚠️ El nombre "${name}" ya está registrado.\n\n` +
+                `¿Eres tú y quieres recuperar tu cuenta?\n\n` +
+                `Se migrarán todos tus puntos y pronósticos.`
+            );
+            
+            if (confirmRecovery) {
+                await migrateAccount(existingUid, currentUser.uid, name);
+                return;
+            } else {
+                alert("Por favor, elige otro nombre.");
+                return;
+            }
+        }
         
-        if (confirmRecovery) {
-            // Migrar la cuenta al nuevo UID
-            await migrateAccount(existingUid, currentUser.uid, name);
-            return;
+        localStorage.setItem(`quiniela_name_${currentUser.uid}`, name);
+        document.getElementById('user-display').textContent = `👤 ${name}`;
+        document.getElementById('login-modal').classList.add('hidden');
+        
+        await setDoc(doc(db, "users", currentUser.uid), { 
+            name, 
+            uid: currentUser.uid, 
+            lastActive: new Date() 
+        }, { merge: true });
+        
+        initApp();
+        
+    } catch (error) {
+        console.error("Error en registro:", error);
+        
+        if (error.code === 'failed-precondition' || error.code === 'unimplemented') {
+            alert("⚠️ Sistema de recuperación temporalmente indisponible. Registrando como usuario nuevo.");
+            
+            localStorage.setItem(`quiniela_name_${currentUser.uid}`, name);
+            document.getElementById('user-display').textContent = `👤 ${name}`;
+            document.getElementById('login-modal').classList.add('hidden');
+            
+            await setDoc(doc(db, "users", currentUser.uid), { 
+                name, 
+                uid: currentUser.uid, 
+                lastActive: new Date() 
+            }, { merge: true });
+            
+            initApp();
         } else {
-            alert("Por favor, elige otro nombre.");
-            return;
+            alert("❌ Error al registrar. Intenta de nuevo.");
         }
     }
-    
-    // Nombre nuevo, registrar normalmente
-    localStorage.setItem(`quiniela_name_${currentUser.uid}`, name);
-    document.getElementById('user-display').textContent = `👤 ${name}`;
-    document.getElementById('login-modal').classList.add('hidden');
-    
-    await setDoc(doc(db, "users", currentUser.uid), { 
-        name, 
-        uid: currentUser.uid, 
-        lastActive: new Date() 
-    }, { merge: true });
-    
-    initApp();
 });
 
 // ==========================================
@@ -88,7 +114,6 @@ async function migrateAccount(oldUid, newUid, name) {
     try {
         const batch = writeBatch(db);
         
-        // 1. Actualizar el documento del usuario con el nuevo UID
         const userRef = doc(db, "users", newUid);
         batch.set(userRef, { 
             name, 
@@ -96,7 +121,6 @@ async function migrateAccount(oldUid, newUid, name) {
             lastActive: new Date() 
         }, { merge: true });
         
-        // 2. Migrar todas las predicciones del UID viejo al nuevo
         const predictionsRef = collection(db, "predictions");
         const q = query(predictionsRef, where("userId", "==", oldUid));
         const predictionsSnapshot = await getDocs(q);
@@ -111,18 +135,14 @@ async function migrateAccount(oldUid, newUid, name) {
                 userId: newUid
             });
             
-            // Borrar la predicción vieja
             batch.delete(docSnap.ref);
         });
         
-        // 3. Borrar el documento del usuario viejo
         const oldUserRef = doc(db, "users", oldUid);
         batch.delete(oldUserRef);
         
-        // Ejecutar el batch
         await batch.commit();
         
-        // 4. Guardar en localStorage
         localStorage.setItem(`quiniela_name_${newUid}`, name);
         document.getElementById('user-display').textContent = `👤 ${name}`;
         document.getElementById('login-modal').classList.add('hidden');
@@ -380,10 +400,11 @@ function renderMatches() {
 }
 
 // ==========================================
-// 4. LÓGICA DE PUNTUACIÓN (5 - 3 - 1 - 0)
+// 4. LÓGICA DE PUNTUACIÓN (5 - 3 - 1 - 0) - VERSIÓN CORREGIDA
 // ==========================================
 async function calculateAndRender() {
     if (matchesData.length === 0) return;
+    if (!currentUser) return;
     
     const usersSnapshot = await getDocs(collection(db, "users"));
     let leaderboard = {};
@@ -397,14 +418,14 @@ async function calculateAndRender() {
 
     matchesData.forEach(match => {
         const isFinished = match.status === "finished";
-        const predKey = currentUser ? `${currentUser.uid}_${match.id}` : null;
-        const myPred = predKey ? predictionsData[predKey] : null;
+        const predKey = `${currentUser.uid}_${match.id}`;
+        const myPred = predictionsData[predKey];
         
-        match.myHome = myPred ? myPred.home : null;
-        match.myAway = myPred ? myPred.away : null;
+        match.myHome = (myPred && myPred.home !== undefined && myPred.home !== null) ? myPred.home : null;
+        match.myAway = (myPred && myPred.away !== undefined && myPred.away !== null) ? myPred.away : null;
         match.resultClass = "";
 
-        if (isFinished && myPred && myPred.home !== null && match.homeScore !== null) {
+        if (isFinished && myPred && myPred.home !== null && myPred.home !== undefined && match.homeScore !== null) {
             const predDiff = myPred.home - myPred.away;
             const actualDiff = match.homeScore - match.awayScore;
 
@@ -424,7 +445,12 @@ async function calculateAndRender() {
             const [uid] = key.split('_');
             const pred = predictionsData[key];
             
-            if (isFinished && pred.home !== null && match.homeScore !== null) {
+            if (!leaderboard[uid]) {
+                console.warn(`⚠️ Predicción huérfana: UID ${uid} no existe. Ignorando.`);
+                return;
+            }
+            
+            if (isFinished && pred.home !== null && pred.home !== undefined && match.homeScore !== null) {
                 const predDiff = pred.home - pred.away;
                 const actualDiff = match.homeScore - match.awayScore;
 
@@ -463,80 +489,6 @@ function renderLeaderboard(data) {
             <td class="px-3 py-3 text-right font-bold text-fifa-gold">${p.score}</td>
         </tr>`;
     }).join('');
-}async function calculateAndRender() {
-    if (matchesData.length === 0) return;
-    if (!currentUser) return;
-    
-    // 1. Obtener TODOS los usuarios registrados
-    const usersSnapshot = await getDocs(collection(db, "users"));
-    let leaderboard = {};
-    
-    usersSnapshot.docs.forEach(doc => {
-        const userData = doc.data();
-        leaderboard[doc.id] = { name: userData.name || "Jugador", exacts: 0, score: 0, uid: doc.id };
-    });
-
-    let userStats = { score: 0, exacts: 0 };
-
-    matchesData.forEach(match => {
-        const isFinished = match.status === "finished";
-        const predKey = `${currentUser.uid}_${match.id}`;
-        const myPred = predictionsData[predKey];
-        
-        match.myHome = (myPred && myPred.home !== undefined && myPred.home !== null) ? myPred.home : null;
-        match.myAway = (myPred && myPred.away !== undefined && myPred.away !== null) ? myPred.away : null;
-        match.resultClass = "";
-
-        // Cálculo para el usuario actual
-        if (isFinished && myPred && myPred.home !== null && myPred.home !== undefined && match.homeScore !== null) {
-            const predDiff = myPred.home - myPred.away;
-            const actualDiff = match.homeScore - match.awayScore;
-
-            if (myPred.home === match.homeScore && myPred.away === match.awayScore) {
-                userStats.score += 5; userStats.exacts += 1; match.resultClass = "exact-match";
-            } else if ((myPred.home > myPred.away && match.homeScore > match.awayScore) || (myPred.home < myPred.away && match.homeScore < match.awayScore) || (myPred.home === myPred.away && match.homeScore === match.awayScore)) {
-                userStats.score += 3; match.resultClass = "winner-match";
-            } else if (predDiff === actualDiff) {
-                userStats.score += 1; match.resultClass = "winner-match";
-            } else {
-                match.resultClass = "lost-match";
-            }
-        }
-
-        // Cálculo para TODOS los jugadores (CON VERIFICACIÓN DE SEGURIDAD)
-        Object.keys(predictionsData).forEach(key => {
-            if (!key.endsWith(`_${match.id}`)) return;
-            const [uid] = key.split('_');
-            const pred = predictionsData[key];
-            
-            // 🔥 VERIFICACIÓN CRÍTICA: Si el uid no existe en el leaderboard, saltarlo
-            if (!leaderboard[uid]) {
-                console.warn(`⚠️ Predicción huérfana detectada: UID ${uid} no existe en usuarios. Ignorando.`);
-                return;
-            }
-            
-            if (isFinished && pred.home !== null && pred.home !== undefined && match.homeScore !== null) {
-                const predDiff = pred.home - pred.away;
-                const actualDiff = match.homeScore - match.awayScore;
-
-                if (pred.home === match.homeScore && pred.away === match.awayScore) {
-                    leaderboard[uid].score += 5; leaderboard[uid].exacts += 1;
-                } else if ((pred.home > pred.away && match.homeScore > match.awayScore) || (pred.home < pred.away && match.homeScore < match.awayScore) || (pred.home === pred.away && match.homeScore === match.awayScore)) {
-                    leaderboard[uid].score += 3;
-                } else if (predDiff === actualDiff) {
-                    leaderboard[uid].score += 1;
-                }
-            }
-        });
-    });
-
-    // Actualizar UI
-    document.getElementById('user-score').textContent = userStats.score;
-    document.getElementById('total-players').textContent = Object.keys(leaderboard).length;
-    
-    const sorted = Object.values(leaderboard).sort((a, b) => b.score - a.score);
-    renderLeaderboard(sorted);
-    renderMatches();
 }
 
 // ==========================================
