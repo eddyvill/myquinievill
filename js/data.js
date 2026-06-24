@@ -5,8 +5,8 @@ export const allMatches = [
     { id: "A2", group: "A", homeTeam: "🇰🇷 Corea del Sur", awayTeam: "🇨🇿 Rep. Checa", date: "11/06 16:00", datetime: "2026-06-11T16:00:00-04:00", status: "scheduled", homeScore: null, awayScore: null },
     { id: "A3", group: "A", homeTeam: "🇨🇿 Rep. Checa", awayTeam: "🇿🇦 Sudáfrica", date: "18/06 18:00", datetime: "2026-06-18T13:00:00-04:00", status: "scheduled", homeScore: null, awayScore: null },
     { id: "A4", group: "A", homeTeam: "🇲🇽 México", awayTeam: "🇰🇷 Corea del Sur", date: "18/06 16:00", datetime: "2026-06-18T16:00:00-04:00", status: "scheduled", homeScore: null, awayScore: null },
-    { id: "A5", group: "A", homeTeam: "🇿🇦 Sudáfrica", awayTeam: "🇰🇷 Corea del Sur", date: "23/06 16:00", datetime: "2026-06-23T16:00:00-04:00", status: "scheduled", homeScore: null, awayScore: null },
-    { id: "A6", group: "A", homeTeam: "🇨🇿 Rep. Checa", awayTeam: "🇲🇽 México", date: "23/06 16:00", datetime: "2026-06-23T16:00:00-04:00", status: "scheduled", homeScore: null, awayScore: null },
+    { id: "A5", group: "A", homeTeam: "🇿🇦 Sudáfrica", awayTeam: "🇰🇷 Corea del Sur", date: "24/06 16:00", datetime: "2026-06-23T16:00:00-04:00", status: "scheduled", homeScore: null, awayScore: null },
+    { id: "A6", group: "A", homeTeam: "🇨🇿 Rep. Checa", awayTeam: "🇲🇽 México", date: "24/06 16:00", datetime: "2026-06-23T16:00:00-04:00", status: "scheduled", homeScore: null, awayScore: null },
     
     // GRUPO B
     { id: "B1", group: "B", homeTeam: "🇨🇦 Canadá", awayTeam: "🇧🇦 Bosnia-Herzegovina", date: "12/06 13:00", datetime: "2026-06-12T13:00:00-04:00", status: "scheduled", homeScore: null, awayScore: null },
