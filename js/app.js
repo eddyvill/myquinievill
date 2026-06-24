@@ -584,5 +584,29 @@ import('./admin.js').then(module => {
     window.fetchRealResults = module.fetchRealResults;
     
     document.getElementById('btn-admin').addEventListener('click', window.showAdminPanel);
-    document.getElementById('btn-sync').addEventListener('click', window.fetchRealResults);
+    document.getElementById('btn-sync').addEventListener('click', async () => {
+    const icon = document.getElementById('sync-icon');
+    icon.classList.add('fa-spin');
+    
+    try {
+        // Forzar recarga de datos desde Firebase
+        await initApp();
+        
+        // Mostrar confirmación visual
+        const originalColor = icon.parentElement.classList.contains('bg-fifa-blue');
+        icon.parentElement.classList.remove('bg-fifa-blue');
+        icon.parentElement.classList.add('bg-emerald-600');
+        
+        setTimeout(() => {
+            icon.parentElement.classList.remove('bg-emerald-600');
+            icon.parentElement.classList.add('bg-fifa-blue');
+            icon.classList.remove('fa-spin');
+        }, 1500);
+        
+    } catch (error) {
+        console.error("Error al refrescar:", error);
+        icon.classList.remove('fa-spin');
+        alert("❌ Error al actualizar los datos");
+    }
+});
 });
