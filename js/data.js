@@ -77,22 +77,22 @@ export const allMatches = [
     { id: "J2", group: "J", homeTeam: "🇦🇹 Austria", awayTeam: "🇯🇴 Jordania", date: "16/06 16:00", datetime: "2026-06-16T16:00:00-04:00", status: "scheduled", homeScore: null, awayScore: null },
     { id: "J3", group: "J", homeTeam: "🇦🇷 Argentina", awayTeam: "🇦🇹 Austria", date: "22/06 13:00", datetime: "2026-06-22T13:00:00-04:00", status: "scheduled", homeScore: null, awayScore: null },
     { id: "J4", group: "J", homeTeam: "🇯🇴 Jordania", awayTeam: "🇩🇿 Argelia", date: "22/06 16:00", datetime: "2026-06-22T16:00:00-04:00", status: "scheduled", homeScore: null, awayScore: null },
-    { id: "J5", group: "J", homeTeam: "🇩🇿 Argelia", awayTeam: "🇦🇹 Austria", date: "28/06 13:00", datetime: "2026-06-28T13:00:00-04:00", status: "scheduled", homeScore: null, awayScore: null },
-    { id: "J6", group: "J", homeTeam: "🇯🇴 Jordania", awayTeam: "🇦🇷 Argentina", date: "28/06 13:00", datetime: "2026-06-28T13:00:00-04:00", status: "scheduled", homeScore: null, awayScore: null },
+    { id: "J5", group: "J", homeTeam: "🇩🇿 Argelia", awayTeam: "🇦🇹 Austria", date: "27/06 22:00", datetime: "2026-06-27T22:00:00-04:00", status: "scheduled", homeScore: null, awayScore: null },
+    { id: "J6", group: "J", homeTeam: "🇯🇴 Jordania", awayTeam: "🇦🇷 Argentina", date: "27/06 22:00", datetime: "2026-06-27T22:00:00-04:00", status: "scheduled", homeScore: null, awayScore: null },
 
     // GRUPO K
     { id: "K1", group: "K", homeTeam: "🇵🇹 Portugal", awayTeam: "🇨🇩 RD Congo", date: "17/06 13:00", datetime: "2026-06-17T13:00:00-04:00", status: "scheduled", homeScore: null, awayScore: null },
     { id: "K2", group: "K", homeTeam: "🇺🇿 Uzbekistán", awayTeam: "🇨🇴 Colombia", date: "17/06 16:00", datetime: "2026-06-17T16:00:00-04:00", status: "scheduled", homeScore: null, awayScore: null },
     { id: "K3", group: "K", homeTeam: "🇵🇹 Portugal", awayTeam: "🇺🇿 Uzbekistán", date: "23/06 13:00", datetime: "2026-06-23T13:00:00-04:00", status: "scheduled", homeScore: null, awayScore: null },
     { id: "K4", group: "K", homeTeam: "🇨🇴 Colombia", awayTeam: "🇨🇩 RD Congo", date: "23/06 16:00", datetime: "2026-06-23T16:00:00-04:00", status: "scheduled", homeScore: null, awayScore: null },
-    { id: "K5", group: "K", homeTeam: "🇨🇴 Colombia", awayTeam: "🇵🇹 Portugal", date: "29/06 16:00", datetime: "2026-06-29T16:00:00-04:00", status: "scheduled", homeScore: null, awayScore: null },
-    { id: "K6", group: "K", homeTeam: "🇨🇩 RD Congo", awayTeam: "🇺🇿 Uzbekistán", date: "29/06 16:00", datetime: "2026-06-29T16:00:00-04:00", status: "scheduled", homeScore: null, awayScore: null },
+    { id: "K5", group: "K", homeTeam: "🇨🇴 Colombia", awayTeam: "🇵🇹 Portugal", date: "27/06 19:30", datetime: "2026-06-27T19:30:00-04:00", status: "scheduled", homeScore: null, awayScore: null },
+    { id: "K6", group: "K", homeTeam: "🇨🇩 RD Congo", awayTeam: "🇺🇿 Uzbekistán", date: "27/06 19:30", datetime: "2026-06-27T19:30:00-04:00", status: "scheduled", homeScore: null, awayScore: null },
 
     // GRUPO L
     { id: "L1", group: "L", homeTeam: "🏴󠁧󠁢󠁥󠁮󠁧󠁿 Inglaterra", awayTeam: "🇭🇷 Croacia", date: "17/06 13:00", datetime: "2026-06-17T13:00:00-04:00", status: "scheduled", homeScore: null, awayScore: null },
     { id: "L2", group: "L", homeTeam: "🇬🇭 Ghana", awayTeam: "🇵🇦 Panamá", date: "17/06 16:00", datetime: "2026-06-17T16:00:00-04:00", status: "scheduled", homeScore: null, awayScore: null },
     { id: "L3", group: "L", homeTeam: "🏴󠁧󠁢󠁥󠁮󠁧󠁿 Inglaterra", awayTeam: "🇬🇭 Ghana", date: "23/06 13:00", datetime: "2026-06-23T13:00:00-04:00", status: "scheduled", homeScore: null, awayScore: null },
     { id: "L4", group: "L", homeTeam: "🇵🇦 Panamá", awayTeam: "🇭🇷 Croacia", date: "23/06 16:00", datetime: "2026-06-23T16:00:00-04:00", status: "scheduled", homeScore: null, awayScore: null },
-    { id: "L5", group: "L", homeTeam: "🇭🇷 Croacia", awayTeam: "🇬🇭 Ghana", date: "29/06 13:00", datetime: "2026-06-29T13:00:00-04:00", status: "scheduled", homeScore: null, awayScore: null },
-    { id: "L6", group: "L", homeTeam: "🇵🇦 Panamá", awayTeam: "🏴󠁧󠁢󠁥󠁮󠁧󠁿 Inglaterra", date: "29/06 13:00", datetime: "2026-06-29T13:00:00-04:00", status: "scheduled", homeScore: null, awayScore: null }
+    { id: "L5", group: "L", homeTeam: "🇭🇷 Croacia", awayTeam: "🇬🇭 Ghana", date: "27/06 17:00", datetime: "2026-06-27T17:00:00-04:00", status: "scheduled", homeScore: null, awayScore: null },
+    { id: "L6", group: "L", homeTeam: "🇵🇦 Panamá", awayTeam: "🏴󠁧󠁢󠁥󠁮󠁧󠁿 Inglaterra", date: "27/06 17:00", datetime: "2026-06-27T17:00:00-04:00", status: "scheduled", homeScore: null, awayScore: null }
 ];
