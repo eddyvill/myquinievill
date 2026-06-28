@@ -1,4 +1,4 @@
-const CACHE_NAME = 'quiniela-2026-v6';
+const CACHE_NAME = 'quiniela-2026-v7';
 const STATIC_ASSETS = [
   './',
   './index.html',
@@ -73,8 +73,8 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Recursos locales: stale-while-revalidate (rápido + actualizado)
-  event.respondWith(staleWhileRevalidate(request));
+  // Recursos locales: network-first para siempre traer la ultima version en produccion
+  event.respondWith(networkFirst(request));
 });
 
 async function cacheFirst(request) {
@@ -91,16 +91,17 @@ async function cacheFirst(request) {
   }
 }
 
-async function staleWhileRevalidate(request) {
+async function networkFirst(request) {
   const cache = await caches.open(CACHE_NAME);
-  const cached = await cache.match(request);
 
-  const fetchPromise = fetch(request)
-    .then((response) => {
-      if (response.ok) cache.put(request, response.clone());
-      return response;
-    })
-    .catch(() => cached);
-
-  return cached || fetchPromise;
+  try {
+    const networkResponse = await fetch(request);
+    if (networkResponse.ok) {
+      cache.put(request, networkResponse.clone());
+    }
+    return networkResponse;
+  } catch (error) {
+    const cached = await cache.match(request);
+    return cached || new Response('Sin conexion', { status: 503, statusText: 'Service Unavailable' });
+  }
 }

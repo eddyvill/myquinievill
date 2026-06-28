@@ -11,7 +11,7 @@ import { getFirestore, collection, doc, setDoc, onSnapshot, getDocs, writeBatch,
 // Registrar Service Worker para PWA
 if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
-        navigator.serviceWorker.register('service-worker.js?v=6')
+        navigator.serviceWorker.register('service-worker.js?v=7')
             .then(reg => console.log('[SW] Registrado:', reg.scope))
             .catch(err => console.error('[SW] Error:', err));
     });
@@ -60,6 +60,20 @@ let activeGroup = 'A';
 let activeKnockoutRound = 'R32';
 let currentPhase = 'groups';
 let featuredTimerInterval = null;
+let initialPhaseSet = false;
+
+function determineInitialPhase(matches) {
+    const groupMatches = matches.filter(m => m.group && /^[A-L]$/.test(m.group));
+    if (groupMatches.length === 0) return 'knockout';
+    const allFinished = groupMatches.every(m => m.status === 'finished');
+    if (allFinished) return 'knockout';
+    // Si ya paso la fecha del ultimo partido de grupos, mostrar fase final
+    const lastGroupMatch = groupMatches.sort((a, b) => new Date(b.datetime) - new Date(a.datetime))[0];
+    if (lastGroupMatch && new Date() > new Date(lastGroupMatch.datetime)) {
+        return 'knockout';
+    }
+    return 'groups';
+}
 
 // ==========================================
 // 1. AUTENTICACIÓN CON RECUPERACIÓN DE CUENTA
@@ -243,6 +257,13 @@ function initApp() {
         window.matchesData = matchesData;
         window.db = db;
 
+        if (!initialPhaseSet) {
+            const detectedPhase = determineInitialPhase(matchesData);
+            currentPhase = detectedPhase;
+            initialPhaseSet = true;
+            console.log('[Phase] Fase inicial detectada:', currentPhase);
+        }
+
         renderTabs();
         renderMatches();
     });
@@ -258,6 +279,7 @@ function initApp() {
 // 3. RENDERIZADO DE INTERFAZ
 // ==========================================
 window.setPhase = function(phase) {
+    console.log('[Phase] Cambiando a:', phase);
     currentPhase = phase;
     renderTabs();
     renderMatches();
@@ -530,7 +552,9 @@ function renderGroupMatches(container) {
 }
 
 function renderKnockoutMatches(container) {
+    console.log('[Knockout] Renderizando ronda:', activeKnockoutRound, 'total matches:', matchesData.length, 'con round:', matchesData.filter(m => m.round).length);
     const roundMatches = matchesData.filter(m => m.round === activeKnockoutRound && !m.group).sort((a, b) => a.id.localeCompare(b.id));
+    console.log('[Knockout] Partidos encontrados:', roundMatches.length);
     const now = new Date();
 
     if (roundMatches.length === 0) {
