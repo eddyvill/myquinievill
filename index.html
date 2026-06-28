@@ -7,7 +7,15 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800;900&family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="css/styles.css?v=6">
+    <link rel="icon" type="image/svg+xml" href="icons/favicon.svg?v=6">
+    <link rel="apple-touch-icon" href="icons/icon.svg?v=6">
+    <link rel="manifest" href="manifest.json?v=6">
+    <meta name="theme-color" content="#0a0e27">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Quiniela 2026">
+    <meta name="description" content="Quiniela oficial del FIFA World Cup 2026™ de Softandnet. Predice resultados y compite con tus amigos.">
     <script>
         tailwind.config = {
             theme: {
@@ -70,9 +78,21 @@
             <!-- El contenido se inyecta dinámicamente -->
         </div>
 
-        <!-- PESTAÑAS DE GRUPOS -->
-        <div class="sticky top-[60px] z-30 bg-fifa-dark/95 backdrop-blur-md py-2 border-b border-slate-700 mb-4">
-            <div class="flex overflow-x-auto gap-2 px-2 no-scrollbar" id="group-tabs"></div>
+        <!-- FASE TOGGLE + TABS -->
+        <div class="sticky top-[57px] z-30 bg-fifa-dark/95 backdrop-blur-md border-b border-slate-700 py-3 mb-4">
+            <div class="max-w-4xl mx-auto px-3">
+                <!-- Toggle de Fase -->
+                <div class="flex p-1 bg-slate-800 rounded-xl max-w-sm mx-auto mb-3">
+                    <button id="phase-groups" class="phase-btn flex-1 py-2 rounded-lg text-sm font-bold transition text-center" data-phase="groups">
+                        <i class="fas fa-layer-group mr-1"></i> Grupos
+                    </button>
+                    <button id="phase-knockout" class="phase-btn flex-1 py-2 rounded-lg text-sm font-bold transition text-center" data-phase="knockout">
+                        <i class="fas fa-sitemap mr-1"></i> Fase Final
+                    </button>
+                </div>
+                <!-- Tabs dinámicos (grupos o rondas) -->
+                <div class="flex overflow-x-auto gap-2 px-1 no-scrollbar" id="phase-tabs"></div>
+            </div>
         </div>
 
         <section id="matches-container" class="space-y-3">
@@ -88,7 +108,33 @@
         <div class="bg-slate-900 w-full sm:max-w-md sm:rounded-2xl rounded-t-2xl border border-slate-700 shadow-2xl max-h-[80vh] flex flex-col">
             <div class="p-4 border-b border-slate-700 flex justify-between items-center">
                 <h3 class="text-xl font-title font-bold text-white"><i class="fas fa-trophy text-fifa-gold mr-2"></i>Posiciones</h3>
-                <button class="btn-close-modal text-slate-400 hover:text-white"><i class="fas fa-times text-xl"></i></button>
+                <div class="flex items-center gap-2">
+                    <button id="btn-scoring-info" class="text-slate-400 hover:text-fifa-gold transition" title="Cómo se puntúa"><i class="fas fa-info-circle text-xl"></i></button>
+                    <button class="btn-close-modal text-slate-400 hover:text-white"><i class="fas fa-times text-xl"></i></button>
+                </div>
+            </div>
+            <div id="scoring-rules" class="hidden bg-slate-800/50 border-b border-slate-700 p-4 text-sm">
+                <h4 class="font-bold text-fifa-gold mb-2"><i class="fas fa-star mr-1"></i>Sistema de puntuación</h4>
+                <div class="grid grid-cols-2 gap-3 text-xs">
+                    <div>
+                        <h5 class="font-bold text-white mb-1">Fase de Grupos</h5>
+                        <ul class="space-y-1 text-slate-300">
+                            <li><span class="text-emerald-400 font-bold">+5</span> Marcador exacto</li>
+                            <li><span class="text-fifa-gold font-bold">+3</span> Resultado correcto</li>
+                            <li><span class="text-slate-300 font-bold">+1</span> Diferencia de gol</li>
+                        </ul>
+                    </div>
+                    <div>
+                        <h5 class="font-bold text-white mb-1">Fase Final (16avos+)</h5>
+                        <ul class="space-y-1 text-slate-300">
+                            <li><span class="text-emerald-400 font-bold">+12</span> Marcador exacto</li>
+                            <li><span class="text-fifa-gold font-bold">+5</span> Resultado correcto</li>
+                            <li><span class="text-blue-400 font-bold">+2/+2</span> Goles local/visitante</li>
+                            <li><span class="text-fifa-red font-bold">x2</span> Multiplicador</li>
+                            <li><span class="text-purple-400 font-bold">+1 a +5</span> Bonus por ronda</li>
+                        </ul>
+                    </div>
+                </div>
             </div>
             <div class="overflow-y-auto p-4 flex-1">
                 <table class="w-full text-sm"><thead class="text-xs text-slate-400 uppercase bg-slate-800 sticky top-0">
@@ -124,6 +170,59 @@
             </button>
         </div>
     </nav>
+
+    <!-- Toast Notifications -->
+    <div id="toast-container" class="fixed top-20 left-1/2 -translate-x-1/2 z-[60] flex flex-col gap-2 pointer-events-none w-[90%] max-w-sm"></div>
+
+    <!-- Admin Panel Modal -->
+    <div id="admin-modal" class="modal fixed inset-0 z-50 flex items-end sm:items-center justify-center hidden p-0 sm:p-4">
+        <div class="bg-slate-900 w-full sm:max-w-lg sm:rounded-2xl rounded-t-2xl border border-slate-700 shadow-2xl max-h-[85vh] flex flex-col">
+            <div class="p-4 border-b border-slate-700 flex justify-between items-center">
+                <h3 class="text-xl font-title font-bold text-white"><i class="fas fa-user-shield text-fifa-red mr-2"></i>Panel Admin</h3>
+                <button id="btn-close-admin" class="text-slate-400 hover:text-white"><i class="fas fa-times text-xl"></i></button>
+            </div>
+            <div class="overflow-y-auto p-4 flex-1">
+                <!-- Login -->
+                <div id="admin-login-view">
+                    <p class="text-slate-300 mb-4 text-sm">Ingresa la contraseña de administrador para continuar.</p>
+                    <input type="password" id="admin-password" placeholder="Contraseña" class="w-full bg-slate-800 border border-slate-600 rounded-xl px-4 py-3 text-white mb-3 focus:border-fifa-gold focus:outline-none">
+                    <button id="btn-admin-login" class="w-full bg-fifa-gold hover:bg-yellow-400 text-fifa-dark font-bold py-3 rounded-xl transition">Entrar</button>
+                    <p id="admin-login-error" class="text-red-400 text-sm mt-2 hidden">Contraseña incorrecta.</p>
+                </div>
+
+                <!-- Menu -->
+                <div id="admin-menu-view" class="hidden space-y-2">
+                    <button data-admin-action="matches" class="admin-menu-btn w-full text-left px-4 py-3 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 transition flex items-center gap-3">
+                        <i class="fas fa-edit text-fifa-blue"></i><span class="font-semibold">Gestionar resultados</span>
+                    </button>
+                    <button data-admin-action="users" class="admin-menu-btn w-full text-left px-4 py-3 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 transition flex items-center gap-3">
+                        <i class="fas fa-users text-fifa-red"></i><span class="font-semibold">Gestionar usuarios</span>
+                    </button>
+                    <button data-admin-action="breakdown" class="admin-menu-btn w-full text-left px-4 py-3 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 transition flex items-center gap-3">
+                        <i class="fas fa-chart-bar text-emerald-400"></i><span class="font-semibold">Desglose de puntos</span>
+                    </button>
+                    <button data-admin-action="reset" class="admin-menu-btn w-full text-left px-4 py-3 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 transition flex items-center gap-3">
+                        <i class="fas fa-undo text-orange-400"></i><span class="font-semibold">Reiniciar apuestas de usuario</span>
+                    </button>
+                    <button data-admin-action="restore" class="admin-menu-btn w-full text-left px-4 py-3 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 transition flex items-center gap-3">
+                        <i class="fas fa-hand-holding-medical text-purple-400"></i><span class="font-semibold">Restaurar pronóstico</span>
+                    </button>
+                    <button data-admin-action="emergency" class="admin-menu-btn w-full text-left px-4 py-3 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 transition flex items-center gap-3">
+                        <i class="fas fa-ambulance text-red-500"></i><span class="font-semibold">Recuperar usuario perdido</span>
+                    </button>
+                    <button data-admin-action="clean" class="admin-menu-btn w-full text-left px-4 py-3 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 transition flex items-center gap-3">
+                        <i class="fas fa-broom text-slate-400"></i><span class="font-semibold">Limpiar predicciones huérfanas</span>
+                    </button>
+                </div>
+
+                <!-- Action Views -->
+                <div id="admin-action-view" class="hidden space-y-4">
+                    <button id="btn-admin-back" class="text-sm text-slate-400 hover:text-fifa-gold flex items-center gap-1 mb-2"><i class="fas fa-arrow-left"></i> Volver</button>
+                    <div id="admin-action-content"></div>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <!-- Carga de Módulos JS -->
     <script type="module" src="js/app.js"></script>

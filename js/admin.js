@@ -2,394 +2,519 @@
 import { ADMIN_PASSWORD } from './config.js';
 import { doc, setDoc, writeBatch, deleteDoc, getDocs, collection } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
 import { allMatches } from './data.js';
+import { calculatePoints, renderPointsBreakdownHTML } from './scoring.js';
 
-export async function showAdminPanel() {
-    const password = prompt("🔐 Contraseña de administrador:");
-    if (password !== ADMIN_PASSWORD) {
-        alert("❌ Contraseña incorrecta");
-        return;
-    }
-    
-    const matches = window.matchesData || [];
-    const db = window.db;
+const db = () => window.db;
+const matchesData = () => window.matchesData || [];
+const currentUser = () => window.currentUser;
+const toast = (msg, type) => window.showToast && window.showToast(msg, type);
 
-    if (!matches || !db) {
-        alert("⚠️ Esperando a que carguen los datos. Intenta en un segundo.");
+// ==========================================
+// RENDERIZADO PRINCIPAL DE ACCIONES
+// ==========================================
+export function renderAdminAction(action, container) {
+    container.innerHTML = '';
+    if (!db()) {
+        container.innerHTML = '<p class="text-red-400 text-center">La base de datos aún no está lista. Espera a que cargue la app.</p>';
         return;
     }
-    
-    const menuText = 
-        "🛠️ PANEL DE ADMINISTRACIÓN\n\n" +
-        "1. 📝 Gestionar Resultados de Partidos\n" +
-        "2. 👥 Gestionar Usuarios (Borrar usuario completo)\n" +
-        "3. 🔍 Ver Desglose de Puntos de un Usuario\n" +
-        "4. 🧹 REPARAR: Reiniciar Apuestas de un Usuario\n" +
-        "5. 🛠️ RESTAURAR: Poner pronóstico manual\n" +
-        "6. 🚨 EMERGENCIA: Recuperar usuario perdido\n" +
-        "7. 🧼 LIMPIAR: Borrar predicciones huérfanas";
-        
-    const mainAction = prompt(menuText);
-
-    if (mainAction === '2') {
-        if (!confirm("⚠️ ¿Entrar a gestión de usuarios?")) return;
-        await manageUsers(db);
-        return;
+    switch (action) {
+        case 'matches': return renderMatchesManager(container);
+        case 'users': return renderUsersManager(container);
+        case 'breakdown': return renderBreakdown(container);
+        case 'reset': return renderReset(container);
+        case 'restore': return renderRestore(container);
+        case 'emergency': return renderEmergency(container);
+        case 'clean': return renderClean(container);
+        default:
+            container.innerHTML = '<p class="text-slate-400">Acción no válida.</p>';
     }
-    if (mainAction === '3') {
-        await showUserPointsBreakdown(db, matches);
-        return;
-    }
-    if (mainAction === '4') {
-        if (!confirm("⚠️ ¿Reiniciar apuestas de un usuario?")) return;
-        await resetUserPredictions(db, matches);
-        return;
-    }
-    if (mainAction === '5') {
-        await restoreUserPrediction(db, matches);
-        return;
-    }
-    if (mainAction === '6') {
-        await emergencyRecoverUser(db);
-        return;
-    }
-    if (mainAction === '1') {
-        await manageMatches(matches, db);
-        return;
-    }
-    if (mainAction === '7') {
-        await cleanOrphanedPredictions(db);
-        return;
-    }
-
-    alert("Acción cancelada o no válida.");
 }
 
-// ==========================================
-// 6. EMERGENCIA: RECUPERAR USUARIO PERDIDO
-// ==========================================
-async function emergencyRecoverUser(db) {
-    const userName = prompt("🚨 RECUPERACIÓN DE EMERGENCIA\n\nEscribe el nombre EXACTO del usuario perdido:");
-    if (!userName) return;
-    
-    // Buscar predicciones huérfanas
-    const predictionsSnapshot = await getDocs(collection(db, "predictions"));
-    const allPredictions = predictionsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-    
-    // Encontrar UIDs que tengan predicciones pero NO tengan documento de usuario
-    const usersSnapshot = await getDocs(collection(db, "users"));
-    const existingUids = new Set(usersSnapshot.docs.map(doc => doc.id));
-    
-    const orphanedUids = [...new Set(allPredictions.map(p => p.userId))].filter(uid => !existingUids.has(uid));
-    
-    if (orphanedUids.length === 0) {
-        alert("❌ No se encontraron predicciones huérfanas.");
-        return;
-    }
-    
-    let selectedUid = null;
-    
-    if (orphanedUids.length === 1) {
-        selectedUid = orphanedUids[0];
-    } else {
-        const uidList = orphanedUids.map((uid, i) => `${i + 1}. ${uid} (${allPredictions.filter(p => p.userId === uid).length} pronósticos)`).join('\n');
-        const selection = prompt(`Se encontraron ${orphanedUids.length} UIDs huérfanos:\n\n${uidList}\n\nElige el número:`);
-        const index = parseInt(selection) - 1;
-        if (isNaN(index) || index < 0 || index >= orphanedUids.length) {
-            alert("❌ Selección inválida.");
-            return;
-        }
-        selectedUid = orphanedUids[index];
-    }
-    
-    const orphanedPredictions = allPredictions.filter(p => p.userId === selectedUid);
-    
-    // Ahora necesitamos el UID REAL de Firebase Auth del dispositivo actual
-    const currentAuthUid = window.currentUser ? window.currentUser.uid : null;
-    
-    if (!currentAuthUid) {
-        alert("❌ Error: No se pudo obtener el UID de Firebase Auth. Asegúrate de estar logueado.");
-        return;
-    }
-    
-    const confirmRecovery = confirm(
-        `🚨 RECUPERAR USUARIO\n\n` +
-        `Nombre: ${userName}\n` +
-        `UID huérfano: ${selectedUid}\n` +
-        `UID actual (Firebase Auth): ${currentAuthUid}\n` +
-        `Pronósticos a migrar: ${orphanedPredictions.length}\n\n` +
-        `¿Confirmar recuperación?`
-    );
-    
-    if (!confirmRecovery) return;
-    
-    try {
-        const batch = writeBatch(db);
-        
-        // 1. Crear/actualizar el documento del usuario con el UID REAL de Firebase Auth
-        batch.set(doc(db, "users", currentAuthUid), {
-            name: userName,
-            uid: currentAuthUid,
-            lastActive: new Date(),
-            recovered: true,
-            oldUid: selectedUid
-        });
-        
-        // 2. Migrar todas las predicciones al UID REAL
-        orphanedPredictions.forEach(pred => {
-            const newPredId = `${currentAuthUid}_${pred.matchId}`;
-            batch.set(doc(db, "predictions", newPredId), {
-                ...pred,
-                userId: currentAuthUid
-            });
-            
-            // Borrar la predicción vieja
-            batch.delete(doc(db, "predictions", `${selectedUid}_${pred.matchId}`));
-        });
-        
-        // 3. Borrar el documento viejo si existe (con UID falso)
-        if (selectedUid !== currentAuthUid) {
-            batch.delete(doc(db, "users", selectedUid));
-        }
-        
-        await batch.commit();
-        
-        // 4. Guardar en localStorage
-        localStorage.setItem(`quiniela_name_${currentAuthUid}`, userName);
-        
-        alert(
-            `✅ ¡RECUPERACIÓN EXITOSA!\n\n` +
-            `Usuario: ${userName}\n` +
-            `UID real (Firebase Auth): ${currentAuthUid}\n` +
-            `Pronósticos migrados: ${orphanedPredictions.length}\n\n` +
-            `Recarga la página para ver los cambios.`
-        );
-        
-        // Recargar para aplicar cambios
-        setTimeout(() => location.reload(), 1500);
-        
-    } catch (error) {
-        console.error("Error en recuperación:", error);
-        alert("❌ Error al recuperar: " + error.message);
-    }
+function loading(text = 'Cargando...') {
+    return `<div class="text-center py-6 text-slate-400"><i class="fas fa-circle-notch fa-spin mr-2"></i>${text}</div>`;
 }
 
 // ==========================================
 // 1. GESTIONAR PARTIDOS
 // ==========================================
-async function manageMatches(matches, db) {
-    const finishedMatches = matches.filter(m => m.status === "finished");
-    const upcomingMatches = matches.filter(m => m.status === "scheduled");
-    
-    let message = "📋 PARTIDOS:\n\n";
-    if (finishedMatches.length > 0) {
-        message += "✅ FINALIZADOS:\n" + finishedMatches.map(m => `${m.id}: ${m.homeTeam} ${m.homeScore}-${m.awayScore} ${m.awayTeam}`).join('\n') + "\n\n";
-    }
-    if (upcomingMatches.length > 0) {
-        message += "⏳ POR JUGAR:\n" + upcomingMatches.slice(0, 10).map(m => `${m.id}: ${m.homeTeam} vs ${m.awayTeam}`).join('\n');
-    }
-    
-    const matchIdInput = prompt(`${message}\n\nEscribe el ID del partido (ej: A1, D1):`);
-    if (!matchIdInput) return;
-    
-    const match = matches.find(m => m.id.toUpperCase() === matchIdInput.trim().toUpperCase());
-    if (!match) { alert(`❌ Partido "${matchIdInput}" no encontrado.`); return; }
-    
-    const action = prompt(
-        `Partido: ${match.homeTeam} vs ${match.awayTeam}\n` +
-        `Estado: ${match.status === "finished" ? `FINALIZADO (${match.homeScore}-${match.awayScore})` : "POR JUGAR"}\n\n` +
-        `1. Poner/Actualizar resultado\n` +
-        `2. REVERTIR a "Por Jugar" (Borrar marcador)`
-    );
+async function renderMatchesManager(container) {
+    container.innerHTML = loading('Cargando partidos...');
+    const matches = matchesData();
+    const finished = matches.filter(m => m.status === 'finished');
+    const upcoming = matches.filter(m => m.status === 'scheduled');
 
-    if (action === '2') {
-        if (!confirm(`⚠️ ¿REVERTIR este partido?`)) return;
-        await setDoc(doc(db, "matches", match.id), { status: "scheduled", homeScore: null, awayScore: null, updatedAt: new Date() }, { merge: true });
-        alert(`✅ Partido revertido.`);
-        if (window.calculateAndRender) window.calculateAndRender();
-        return;
+    const groupMatches = matches.filter(m => /^[A-L]$/.test(m.group));
+    const knockoutMatches = matches.filter(m => !/^[A-L]$/.test(m.group));
+
+    const groupOptions = groupMatches.map(m => {
+        const label = m.status === 'finished'
+            ? `${m.id}: ${m.homeTeam} ${m.homeScore}-${m.awayScore} ${m.awayTeam} ✅`
+            : `${m.id}: ${m.homeTeam} vs ${m.awayTeam}`;
+        return `<option value="${m.id}">${label}</option>`;
+    }).join('');
+
+    const knockoutOptions = knockoutMatches.map(m => {
+        const label = m.status === 'finished'
+            ? `${m.id}: ${m.homeTeam} ${m.homeScore}-${m.awayScore} ${m.awayTeam} ✅`
+            : `${m.id}: ${m.homeTeam} vs ${m.awayTeam}`;
+        return `<option value="${m.id}">${label}</option>`;
+    }).join('');
+
+    const options = `
+        <optgroup label="Fase de Grupos">${groupOptions}</optgroup>
+        <optgroup label="Fase Final">${knockoutOptions}</optgroup>
+    `;
+
+    container.innerHTML = `
+        <div class="space-y-4">
+            <div>
+                <label class="block text-xs uppercase text-slate-400 mb-1">Selecciona un partido</label>
+                <select id="admin-match-select" class="admin-select">${options}</select>
+            </div>
+            <div id="admin-match-detail" class="hidden space-y-3">
+                <p id="admin-match-info" class="text-white font-semibold text-center"></p>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs text-slate-400 mb-1">Local</label>
+                        <input type="number" id="admin-home-score" class="admin-input" min="0" max="99" placeholder="0">
+                    </div>
+                    <div>
+                        <label class="block text-xs text-slate-400 mb-1">Visitante</label>
+                        <input type="number" id="admin-away-score" class="admin-input" min="0" max="99" placeholder="0">
+                    </div>
+                </div>
+                <button id="btn-admin-update-match" class="w-full bg-fifa-gold hover:bg-yellow-400 text-fifa-dark font-bold py-3 rounded-xl transition">Actualizar resultado</button>
+                <button id="btn-admin-revert-match" class="w-full bg-slate-700 hover:bg-slate-600 text-white font-semibold py-2 rounded-xl transition hidden">Revertir a "Por jugar"</button>
+            </div>
+        </div>
+    `;
+
+    const select = document.getElementById('admin-match-select');
+    const detail = document.getElementById('admin-match-detail');
+    const info = document.getElementById('admin-match-info');
+    const homeInput = document.getElementById('admin-home-score');
+    const awayInput = document.getElementById('admin-away-score');
+    const updateBtn = document.getElementById('btn-admin-update-match');
+    const revertBtn = document.getElementById('btn-admin-revert-match');
+
+    function showMatchDetail() {
+        const match = matches.find(m => m.id === select.value);
+        if (!match) return;
+        detail.classList.remove('hidden');
+        info.textContent = `${match.homeTeam} vs ${match.awayTeam}`;
+        homeInput.value = match.homeScore !== null && match.homeScore !== undefined ? match.homeScore : '';
+        awayInput.value = match.awayScore !== null && match.awayScore !== undefined ? match.awayScore : '';
+        if (match.status === 'finished') {
+            revertBtn.classList.remove('hidden');
+            updateBtn.textContent = 'Actualizar resultado';
+        } else {
+            revertBtn.classList.add('hidden');
+            updateBtn.textContent = 'Guardar resultado';
+        }
     }
 
-    if (action !== '1') { alert("Cancelado."); return; }
+    select.addEventListener('change', showMatchDetail);
+    showMatchDetail();
 
-    const homeScore = prompt(`Goles de ${match.homeTeam}:`);
-    const awayScore = prompt(`Goles de ${match.awayTeam}:`);
-    
-    if (homeScore === null || awayScore === null || isNaN(homeScore) || isNaN(awayScore)) { 
-        alert("❌ Deben ser números válidos"); return; 
-    }
-    
-    await setDoc(doc(db, "matches", match.id), { 
-        status: "finished", 
-        homeScore: parseInt(homeScore), 
-        awayScore: parseInt(awayScore), 
-        updatedAt: new Date() 
-    }, { merge: true });
-    
-    alert(`✅ Actualizado: ${match.homeTeam} ${homeScore} - ${awayScore} ${match.awayTeam}`);
-    if (window.calculateAndRender) window.calculateAndRender();
+    updateBtn.addEventListener('click', async () => {
+        const match = matches.find(m => m.id === select.value);
+        const home = parseInt(homeInput.value);
+        const away = parseInt(awayInput.value);
+        if (isNaN(home) || isNaN(away)) {
+            toast('Ingresa goles válidos', 'warning');
+            return;
+        }
+        try {
+            await setDoc(doc(db(), 'matches', match.id), {
+                status: 'finished', homeScore: home, awayScore: away, updatedAt: new Date()
+            }, { merge: true });
+            toast('Resultado actualizado', 'success');
+            showMatchDetail();
+        } catch (error) {
+            console.error(error);
+            toast('Error al actualizar', 'error');
+        }
+    });
+
+    revertBtn.addEventListener('click', async () => {
+        const match = matches.find(m => m.id === select.value);
+        if (!confirm(`¿Revertir ${match.homeTeam} vs ${match.awayTeam} a "Por jugar"?`)) return;
+        try {
+            await setDoc(doc(db(), 'matches', match.id), { status: 'scheduled', homeScore: null, awayScore: null, updatedAt: new Date() }, { merge: true });
+            toast('Partido revertido', 'success');
+            showMatchDetail();
+        } catch (error) {
+            console.error(error);
+            toast('Error al revertir', 'error');
+        }
+    });
 }
 
 // ==========================================
-// 2. REPARAR: REINICIAR APUESTAS
+// 2. GESTIONAR USUARIOS (BORRAR)
 // ==========================================
-async function resetUserPredictions(db, matches) {
-    const usersSnapshot = await getDocs(collection(db, "users"));
-    const users = usersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-    if (users.length === 0) { alert("ℹ️ No hay usuarios."); return; }
+async function renderUsersManager(container) {
+    container.innerHTML = loading('Cargando usuarios...');
+    const usersSnapshot = await getDocs(collection(db(), 'users'));
+    const users = usersSnapshot.docs.map(d => ({ id: d.id, ...d.data() }));
 
-    let userList = users.map((u, i) => `${i + 1}. ${u.name}`).join('\n');
-    const userIndexInput = prompt(`👥 USUARIOS:\n\n${userList}\n\nEscribe el NÚMERO del usuario a REINICIAR:`);
-    const userIndex = parseInt(userIndexInput) - 1;
-    if (isNaN(userIndex) || userIndex < 0 || userIndex >= users.length) { alert("❌ Inválido."); return; }
-    
-    const targetUser = users[userIndex];
-    if (!confirm(`⚠️ ¿Reiniciar a "${targetUser.name}"?`)) return;
+    if (users.length === 0) {
+        container.innerHTML = '<p class="text-slate-400 text-center">No hay usuarios registrados.</p>';
+        return;
+    }
 
-    const predictionsSnapshot = await getDocs(collection(db, "predictions"));
-    const batch = writeBatch(db);
-    let deletedCount = 0;
-    
-    predictionsSnapshot.docs.forEach(docSnapshot => {
-        if (docSnapshot.data().userId === targetUser.id) {
-            batch.delete(docSnapshot.ref);
-            deletedCount++;
+    const options = users.map((u, i) => `<option value="${u.id}">${u.name}</option>`).join('');
+
+    container.innerHTML = `
+        <div class="space-y-4">
+            <div>
+                <label class="block text-xs uppercase text-slate-400 mb-1">Usuario a eliminar</label>
+                <select id="admin-user-select" class="admin-select">${options}</select>
+            </div>
+            <div class="bg-red-900/20 border border-red-900/40 rounded-xl p-3 text-sm text-red-200">
+                <i class="fas fa-exclamation-triangle mr-1"></i> Esta acción borra al usuario y todas sus apuestas. No se puede deshacer.
+            </div>
+            <button id="btn-admin-delete-user" class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 rounded-xl transition">Eliminar usuario permanentemente</button>
+        </div>
+    `;
+
+    document.getElementById('btn-admin-delete-user').addEventListener('click', async () => {
+        const uid = document.getElementById('admin-user-select').value;
+        const user = users.find(u => u.id === uid);
+        if (!user) return;
+        if (!confirm(`¿Eliminar a "${user.name}"?`)) return;
+        if (!confirm('ÚLTIMA ADVERTENCIA: ¿borrar usuario y todas sus apuestas?')) return;
+
+        try {
+            const predictionsSnapshot = await getDocs(collection(db(), 'predictions'));
+            const batch = writeBatch(db());
+            let deleted = 0;
+            predictionsSnapshot.docs.forEach(d => {
+                if (d.data().userId === uid) {
+                    batch.delete(d.ref);
+                    deleted++;
+                }
+            });
+            if (deleted > 0) await batch.commit();
+            await deleteDoc(doc(db(), 'users', uid));
+            toast(`"${user.name}" eliminado (${deleted} apuestas)`, 'success');
+            renderUsersManager(container);
+        } catch (error) {
+            console.error(error);
+            toast('Error al eliminar usuario', 'error');
         }
     });
-    
-    if (deletedCount > 0) await batch.commit();
-    alert(`✅ Se eliminaron ${deletedCount} apuestas de "${targetUser.name}".`);
-    if (window.calculateAndRender) window.calculateAndRender();
 }
 
 // ==========================================
 // 3. DESGLOSE DE PUNTOS
 // ==========================================
-async function showUserPointsBreakdown(db, matches) {
-    const usersSnapshot = await getDocs(collection(db, "users"));
-    const users = usersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-    if (users.length === 0) { alert("ℹ️ No hay usuarios."); return; }
+async function renderBreakdown(container) {
+    container.innerHTML = loading('Cargando usuarios...');
+    const usersSnapshot = await getDocs(collection(db(), 'users'));
+    const users = usersSnapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+    const matches = matchesData();
 
-    let userList = users.map((u, i) => `${i + 1}. ${u.name}`).join('\n');
-    const userIndexInput = prompt(`👥 USUARIOS:\n\n${userList}\n\nEscribe el NÚMERO para ver su desglose:`);
-    const userIndex = parseInt(userIndexInput) - 1;
-    if (isNaN(userIndex) || userIndex < 0 || userIndex >= users.length) { alert("❌ Inválido."); return; }
-    
-    const targetUser = users[userIndex];
-    const predictionsSnapshot = await getDocs(collection(db, "predictions"));
-    const userPredictions = predictionsSnapshot.docs.map(doc => doc.data()).filter(pred => pred.userId === targetUser.id);
-    
-    if (userPredictions.length === 0) { alert(`ℹ️ "${targetUser.name}" no tiene apuestas.`); return; }
+    if (users.length === 0) {
+        container.innerHTML = '<p class="text-slate-400 text-center">No hay usuarios.</p>';
+        return;
+    }
 
-    let totalPoints = 0;
-    let breakdown = `📊 DESGLOSE: ${targetUser.name}\n${"=".repeat(45)}\n\n`;
-    
-    userPredictions.forEach(pred => {
-        const match = matches.find(m => m.id === pred.matchId);
-        if (!match) { breakdown += `⚠️ ${pred.matchId}: Datos no encontrados\n\n`; return; }
-        
-        const isFinished = match.status === "finished";
-        breakdown += `${isFinished ? "✅" : "⏳"} ${match.id}: ${match.homeTeam} vs ${match.awayTeam}\n`;
-        
-        if (!isFinished) {
-            breakdown += `   🎯 Pronóstico: ${pred.home} - ${pred.away} (Pendiente)\n\n`;
+    const options = users.map(u => `<option value="${u.id}">${u.name}</option>`).join('');
+
+    container.innerHTML = `
+        <div class="space-y-4">
+            <div>
+                <label class="block text-xs uppercase text-slate-400 mb-1">Jugador</label>
+                <select id="admin-breakdown-user" class="admin-select">${options}</select>
+            </div>
+            <div id="admin-breakdown-result" class="space-y-2 max-h-[50vh] overflow-y-auto pr-1"></div>
+        </div>
+    `;
+
+    const resultContainer = document.getElementById('admin-breakdown-result');
+
+    async function loadBreakdown() {
+        resultContainer.innerHTML = loading();
+        const uid = document.getElementById('admin-breakdown-user').value;
+        const user = users.find(u => u.id === uid);
+        const predictionsSnapshot = await getDocs(collection(db(), 'predictions'));
+        const preds = predictionsSnapshot.docs.map(d => d.data()).filter(p => p.userId === uid);
+
+        if (preds.length === 0) {
+            resultContainer.innerHTML = '<p class="text-slate-400 text-center">Sin apuestas.</p>';
             return;
         }
-        
-        breakdown += `   🎯 Apuesta: ${pred.home} - ${pred.away}\n`;
-        breakdown += `   🏆 Resultado: ${match.homeScore} - ${match.awayScore}\n`;
-        
-        const predDiff = pred.home - pred.away;
-        const actualDiff = match.homeScore - match.awayScore;
-        let points = 0, level = "";
-        
-        if (pred.home === match.homeScore && pred.away === match.awayScore) { points = 5; level = "🎯 Exacto"; } 
-        else if ((pred.home > pred.away && match.homeScore > match.awayScore) || (pred.home < pred.away && match.homeScore < match.awayScore) || (pred.home === pred.away && match.homeScore === match.awayScore)) { points = 3; level = "✅ Resultado"; } 
-        else if (predDiff === actualDiff) { points = 1; level = "📊 Diferencia"; } 
-        else { points = 0; level = "❌ Fallo"; }
-        
-        breakdown += `   ➕ ${level}: +${points} pts\n\n`;
-        totalPoints += points;
-    });
-    
-    breakdown += `${"=".repeat(45)}\n💰 TOTAL: ${totalPoints} pts\n`;
-    alert(breakdown);
+
+        let total = 0;
+        const rows = preds.map(pred => {
+            const match = matches.find(m => m.id === pred.matchId);
+            if (!match) return '';
+            const isFinished = match.status === 'finished';
+            const pointsResult = isFinished ? calculatePoints(pred, match) : { points: 0 };
+            const points = pointsResult.points;
+            const cls = pointsResult.isExact ? 'text-emerald-400' : pointsResult.isCorrectResult ? 'text-fifa-gold' : points > 0 ? 'text-blue-400' : 'text-red-400';
+            const label = pointsResult.isExact ? '🎯 Exacto' : pointsResult.isCorrectResult ? '✅ Resultado' : points > 0 ? '📊 Diferencia / Bonus' : '❌ Fallo';
+            if (isFinished) total += points;
+
+            return `
+                <div class="bg-slate-800/50 rounded-lg p-3 text-sm border border-slate-700">
+                    <div class="flex justify-between items-start mb-1">
+                        <span class="font-semibold text-white">${match.homeTeam} vs ${match.awayTeam}</span>
+                        <span class="font-bold ${cls}">${isFinished ? '+' + points : ''}</span>
+                    </div>
+                    <div class="text-xs text-slate-400 flex justify-between">
+                        <span>Apuesta: ${pred.home} - ${pred.away}</span>
+                        ${isFinished ? `<span>Resultado: ${match.homeScore} - ${match.awayScore}</span>` : ''}
+                    </div>
+                    ${isFinished ? `<div class="text-xs ${cls} mt-1">${label}</div>` : ''}
+                    ${isFinished && points > 0 ? renderPointsBreakdownHTML(pointsResult) : ''}
+                </div>
+            `;
+        }).join('');
+
+        resultContainer.innerHTML = `
+            <div class="flex justify-between items-center bg-fifa-gold/10 border border-fifa-gold/30 rounded-lg p-3 mb-2">
+                <span class="font-bold text-white">${user.name}</span>
+                <span class="font-black text-fifa-gold text-lg">${total} pts</span>
+            </div>
+            ${rows}
+        `;
+    }
+
+    document.getElementById('admin-breakdown-user').addEventListener('change', loadBreakdown);
+    await loadBreakdown();
 }
 
 // ==========================================
-// 4. BORRAR USUARIO COMPLETO
+// 4. REINICIAR APUESTAS
 // ==========================================
-async function manageUsers(db) {
-    const usersSnapshot = await getDocs(collection(db, "users"));
-    const users = usersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-    if (users.length === 0) { alert("ℹ️ No hay usuarios."); return; }
+async function renderReset(container) {
+    container.innerHTML = loading('Cargando usuarios...');
+    const usersSnapshot = await getDocs(collection(db(), 'users'));
+    const users = usersSnapshot.docs.map(d => ({ id: d.id, ...d.data() }));
 
-    let userList = users.map((u, i) => `${i + 1}. ${u.name}`).join('\n');
-    const userToDeleteIndex = prompt(`👥 ELIMINAR PERMANENTEMENTE:\n\n${userList}\n\nEscribe el NÚMERO:`);
-    const index = parseInt(userToDeleteIndex) - 1;
-    if (isNaN(index) || index < 0 || index >= users.length) { alert("❌ Inválido."); return; }
-    
-    const targetUser = users[index];
-    if (!confirm(`⚠️ ¿ELIMINAR a "${targetUser.name}"?`)) return;
-    if (!confirm(`⚠️ ÚLTIMA ADVERTENCIA: Esto borrará al usuario Y todas sus apuestas.`)) return;
+    if (users.length === 0) {
+        container.innerHTML = '<p class="text-slate-400 text-center">No hay usuarios.</p>';
+        return;
+    }
 
-    const predictionsSnapshot = await getDocs(collection(db, "predictions"));
-    const batch = writeBatch(db);
-    let deletedPredictions = 0;
-    
-    predictionsSnapshot.docs.forEach(docSnapshot => {
-        if (docSnapshot.data().userId === targetUser.id) {
-            batch.delete(docSnapshot.ref);
-            deletedPredictions++;
+    const options = users.map(u => `<option value="${u.id}">${u.name}</option>`).join('');
+
+    container.innerHTML = `
+        <div class="space-y-4">
+            <div>
+                <label class="block text-xs uppercase text-slate-400 mb-1">Usuario a reiniciar</label>
+                <select id="admin-reset-user" class="admin-select">${options}</select>
+            </div>
+            <button id="btn-admin-reset" class="w-full bg-orange-600 hover:bg-orange-700 text-white font-bold py-3 rounded-xl transition">Reiniciar todas sus apuestas</button>
+        </div>
+    `;
+
+    document.getElementById('btn-admin-reset').addEventListener('click', async () => {
+        const uid = document.getElementById('admin-reset-user').value;
+        const user = users.find(u => u.id === uid);
+        if (!confirm(`¿Reiniciar todas las apuestas de "${user.name}"?`)) return;
+
+        try {
+            const predictionsSnapshot = await getDocs(collection(db(), 'predictions'));
+            const batch = writeBatch(db());
+            let deleted = 0;
+            predictionsSnapshot.docs.forEach(d => {
+                if (d.data().userId === uid) {
+                    batch.delete(d.ref);
+                    deleted++;
+                }
+            });
+            if (deleted > 0) await batch.commit();
+            toast(`Reiniciadas ${deleted} apuestas de ${user.name}`, 'success');
+        } catch (error) {
+            console.error(error);
+            toast('Error al reiniciar', 'error');
         }
     });
-    if (deletedPredictions > 0) await batch.commit();
-    await deleteDoc(doc(db, "users", targetUser.id));
-    
-    alert(`✅ "${targetUser.name}" eliminado con ${deletedPredictions} apuestas.`);
-    if (window.calculateAndRender) window.calculateAndRender();
 }
 
 // ==========================================
 // 5. RESTAURAR PRONÓSTICO
 // ==========================================
-async function restoreUserPrediction(db, matches) {
-    const usersSnapshot = await getDocs(collection(db, "users"));
-    const users = usersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-    if (users.length === 0) { alert("ℹ️ No hay usuarios."); return; }
+async function renderRestore(container) {
+    container.innerHTML = loading('Cargando datos...');
+    const usersSnapshot = await getDocs(collection(db(), 'users'));
+    const users = usersSnapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+    const matches = matchesData();
 
-    let userList = users.map((u, i) => `${i + 1}. ${u.name}`).join('\n');
-    const userIndexInput = prompt(`👥 PASO 1: Selecciona al usuario\n\n${userList}\n\nEscribe el NÚMERO:`);
-    const userIndex = parseInt(userIndexInput) - 1;
-    if (isNaN(userIndex) || userIndex < 0 || userIndex >= users.length) { alert("❌ Inválido."); return; }
-    const targetUser = users[userIndex];
-
-    const matchList = matches.map(m => `${m.id}: ${m.homeTeam} vs ${m.awayTeam}`).join('\n');
-    const matchIdInput = prompt(`👥 PASO 2: Usuario: ${targetUser.name}\n\n📋 PARTIDOS:\n${matchList}\n\nEscribe el ID del partido:`);
-    
-    const match = matches.find(m => m.id.toUpperCase() === matchIdInput.trim().toUpperCase());
-    if (!match) { alert("❌ Partido no encontrado."); return; }
-
-    const homePred = prompt(`¿Cuántos goles apostó ${targetUser.name} para ${match.homeTeam}?`);
-    if (homePred === null) return;
-    const awayPred = prompt(`¿Cuántos goles apostó ${targetUser.name} para ${match.awayTeam}?`);
-    if (awayPred === null) return;
-
-    if (isNaN(homePred) || isNaN(awayPred) || homePred === '' || awayPred === '') {
-        alert("❌ Deben ser números válidos.");
+    if (users.length === 0) {
+        container.innerHTML = '<p class="text-slate-400 text-center">No hay usuarios.</p>';
         return;
     }
 
-    const predId = `${targetUser.id}_${match.id}`;
-    await setDoc(doc(db, "predictions", predId), {
-        userId: targetUser.id,
-        matchId: match.id,
-        home: parseInt(homePred),
-        away: parseInt(awayPred),
-        updatedAt: new Date()
-    });
+    const userOptions = users.map(u => `<option value="${u.id}">${u.name}</option>`).join('');
+    const matchOptions = matches.map(m => `<option value="${m.id}">${m.id}: ${m.homeTeam} vs ${m.awayTeam}</option>`).join('');
 
-    alert(`✅ Pronóstico restaurado: ${homePred} - ${awayPred}`);
-    if (window.calculateAndRender) window.calculateAndRender();
+    container.innerHTML = `
+        <div class="space-y-4">
+            <div>
+                <label class="block text-xs uppercase text-slate-400 mb-1">Usuario</label>
+                <select id="admin-restore-user" class="admin-select">${userOptions}</select>
+            </div>
+            <div>
+                <label class="block text-xs uppercase text-slate-400 mb-1">Partido</label>
+                <select id="admin-restore-match" class="admin-select">${matchOptions}</select>
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label class="block text-xs text-slate-400 mb-1">Local</label>
+                    <input type="number" id="admin-restore-home" class="admin-input" min="0" max="99" placeholder="0">
+                </div>
+                <div>
+                    <label class="block text-xs text-slate-400 mb-1">Visitante</label>
+                    <input type="number" id="admin-restore-away" class="admin-input" min="0" max="99" placeholder="0">
+                </div>
+            </div>
+            <button id="btn-admin-restore" class="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 rounded-xl transition">Guardar pronóstico</button>
+        </div>
+    `;
+
+    document.getElementById('btn-admin-restore').addEventListener('click', async () => {
+        const uid = document.getElementById('admin-restore-user').value;
+        const matchId = document.getElementById('admin-restore-match').value;
+        const home = parseInt(document.getElementById('admin-restore-home').value);
+        const away = parseInt(document.getElementById('admin-restore-away').value);
+        if (isNaN(home) || isNaN(away)) {
+            toast('Ingresa goles válidos', 'warning');
+            return;
+        }
+        try {
+            await setDoc(doc(db(), 'predictions', `${uid}_${matchId}`), {
+                userId: uid, matchId, home, away, updatedAt: new Date()
+            });
+            toast('Pronóstico restaurado', 'success');
+        } catch (error) {
+            console.error(error);
+            toast('Error al restaurar', 'error');
+        }
+    });
+}
+
+// ==========================================
+// 6. RECUPERAR USUARIO PERDIDO
+// ==========================================
+async function renderEmergency(container) {
+    container.innerHTML = loading('Buscando predicciones huérfanas...');
+
+    try {
+        const predictionsSnapshot = await getDocs(collection(db(), 'predictions'));
+        const allPredictions = predictionsSnapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+        const usersSnapshot = await getDocs(collection(db(), 'users'));
+        const existingUids = new Set(usersSnapshot.docs.map(d => d.id));
+        const orphanedUids = [...new Set(allPredictions.map(p => p.userId))].filter(uid => !existingUids.has(uid));
+
+        if (orphanedUids.length === 0) {
+            container.innerHTML = '<p class="text-slate-400 text-center">No se encontraron predicciones huérfanas.</p>';
+            return;
+        }
+
+        const options = orphanedUids.map(uid => {
+            const count = allPredictions.filter(p => p.userId === uid).length;
+            return `<option value="${uid}">${uid} (${count} pronósticos)</option>`;
+        }).join('');
+
+        container.innerHTML = `
+            <div class="space-y-4">
+                <p class="text-sm text-slate-300">Se encontraron ${orphanedUids.length} cuenta(s) sin usuario asociado.</p>
+                <div>
+                    <label class="block text-xs uppercase text-slate-400 mb-1">UID huérfano</label>
+                    <select id="admin-emergency-uid" class="admin-select">${options}</select>
+                </div>
+                <div>
+                    <label class="block text-xs uppercase text-slate-400 mb-1">Nombre del usuario</label>
+                    <input type="text" id="admin-emergency-name" class="admin-input" placeholder="Nombre exacto">
+                </div>
+                <button id="btn-admin-emergency" class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 rounded-xl transition">Recuperar cuenta</button>
+            </div>
+        `;
+
+        document.getElementById('btn-admin-emergency').addEventListener('click', async () => {
+            const oldUid = document.getElementById('admin-emergency-uid').value;
+            const name = document.getElementById('admin-emergency-name').value.trim();
+            if (!name) {
+                toast('Ingresa el nombre del usuario', 'warning');
+                return;
+            }
+            const authUid = currentUser() ? currentUser().uid : null;
+            if (!authUid) {
+                toast('No se pudo obtener el UID de Firebase Auth', 'error');
+                return;
+            }
+            const orphanedPredictions = allPredictions.filter(p => p.userId === oldUid);
+            if (!confirm(`¿Recuperar ${orphanedPredictions.length} pronósticos para "${name}"?`)) return;
+
+            try {
+                const batch = writeBatch(db());
+                batch.set(doc(db(), 'users', authUid), {
+                    name, uid: authUid, lastActive: new Date(), recovered: true, oldUid
+                });
+                orphanedPredictions.forEach(pred => {
+                    const newId = `${authUid}_${pred.matchId}`;
+                    batch.set(doc(db(), 'predictions', newId), { ...pred, userId: authUid });
+                    batch.delete(doc(db(), 'predictions', `${oldUid}_${pred.matchId}`));
+                });
+                if (oldUid !== authUid) batch.delete(doc(db(), 'users', oldUid));
+                await batch.commit();
+                localStorage.setItem(`quiniela_name_${authUid}`, name);
+                toast('Cuenta recuperada. Recarga la página.', 'success');
+                setTimeout(() => location.reload(), 1500);
+            } catch (error) {
+                console.error(error);
+                toast('Error al recuperar: ' + error.message, 'error');
+            }
+        });
+    } catch (error) {
+        console.error(error);
+        container.innerHTML = '<p class="text-red-400 text-center">Error al buscar predicciones.</p>';
+    }
+}
+
+// ==========================================
+// 7. LIMPIAR PREDICCIONES HUÉRFANAS
+// ==========================================
+async function renderClean(container) {
+    container.innerHTML = `
+        <div class="space-y-4 text-center">
+            <p class="text-slate-300 text-sm">Esta acción elimina todas las predicciones cuyo usuario ya no existe en la base de datos.</p>
+            <button id="btn-admin-clean" class="w-full bg-slate-700 hover:bg-slate-600 text-white font-bold py-3 rounded-xl transition">Buscar y limpiar predicciones huérfanas</button>
+            <div id="admin-clean-result"></div>
+        </div>
+    `;
+
+    document.getElementById('btn-admin-clean').addEventListener('click', async () => {
+        if (!confirm('¿Borrar todas las predicciones de usuarios inexistentes?')) return;
+        const resultDiv = document.getElementById('admin-clean-result');
+        resultDiv.innerHTML = loading('Limpiando...');
+
+        try {
+            const usersSnapshot = await getDocs(collection(db(), 'users'));
+            const validUids = new Set(usersSnapshot.docs.map(d => d.id));
+            const predictionsSnapshot = await getDocs(collection(db(), 'predictions'));
+            const batch = writeBatch(db());
+            let count = 0;
+            predictionsSnapshot.docs.forEach(d => {
+                if (!validUids.has(d.data().userId)) {
+                    batch.delete(d.ref);
+                    count++;
+                }
+            });
+            if (count > 0) await batch.commit();
+            resultDiv.innerHTML = `<p class="text-emerald-400 font-semibold">${count === 0 ? 'No había predicciones huérfanas.' : `Se eliminaron ${count} predicciones huérfanas.`}</p>`;
+            toast('Limpieza completada', 'success');
+        } catch (error) {
+            console.error(error);
+            resultDiv.innerHTML = '<p class="text-red-400">Error al limpiar.</p>';
+            toast('Error al limpiar', 'error');
+        }
+    });
 }
 
 // ==========================================
@@ -397,22 +522,20 @@ async function restoreUserPrediction(db, matches) {
 // ==========================================
 export async function fetchRealResults() {
     const icon = document.getElementById('sync-icon');
-    icon.classList.add('fa-spin');
+    if (icon) icon.classList.add('fa-spin');
     try {
         const response = await fetch('https://api.quiniela.softandnet.site/api-proxy.php');
         const data = await response.json();
         if (data.error || !data.response || data.response.length === 0) {
-            alert("ℹ️ No hay partidos finalizados en la API aún.");
-            icon.classList.remove('fa-spin');
+            toast('No hay partidos finalizados en la API aún.', 'info');
             return;
         }
-        const db = window.db;
-        const matches = window.matchesData || [];
-        const batch = writeBatch(db);
+        const matches = matchesData();
+        const batch = writeBatch(db());
         let updatedCount = 0;
 
         matches.forEach(localMatch => {
-            if (localMatch.status === "finished") return;
+            if (localMatch.status === 'finished') return;
             const cleanLocalHome = localMatch.homeTeam.replace(/[^\w\s]/gi, '').trim().toLowerCase();
             const cleanLocalAway = localMatch.awayTeam.replace(/[^\w\s]/gi, '').trim().toLowerCase();
             const apiMatch = data.response.find(api => {
@@ -422,60 +545,22 @@ export async function fetchRealResults() {
                        (apiAway.includes(cleanLocalAway) || cleanLocalAway.includes(apiAway));
             });
             if (apiMatch && apiMatch.fixture.status.short === 'FT') {
-                batch.update(doc(db, "matches", localMatch.id), { status: "finished", homeScore: apiMatch.goals.home, awayScore: apiMatch.goals.away });
+                batch.update(doc(db(), 'matches', localMatch.id), { status: 'finished', homeScore: apiMatch.goals.home, awayScore: apiMatch.goals.away });
                 updatedCount++;
             }
         });
 
         if (updatedCount > 0) {
             await batch.commit();
-            alert(`✅ Se actualizaron ${updatedCount} partidos.`);
+            toast(`Se actualizaron ${updatedCount} partidos`, 'success');
         } else {
-            alert("ℹ️ Todo al día.");
+            toast('Todo al día', 'info');
         }
     } catch (error) {
-        console.error("💥 Error:", error);
-        alert("❌ Error de conexión.");
+        console.error('Error:', error);
+        toast('Error de conexión con la API', 'error');
     } finally {
-        icon.classList.remove('fa-spin');
+        if (icon) icon.classList.remove('fa-spin');
         if (window.calculateAndRender) window.calculateAndRender();
-    }
-}
-// ==========================================
-// 7. LIMPIAR PREDICCIONES HUÉRFANAS
-// ==========================================
-async function cleanOrphanedPredictions(db) {
-    if (!confirm("⚠️ Esto borrará todas las predicciones de usuarios que ya no existen.\n\n¿Continuar?")) return;
-    
-    try {
-        // 1. Obtener todos los UIDs de usuarios existentes
-        const usersSnapshot = await getDocs(collection(db, "users"));
-        const validUids = new Set(usersSnapshot.docs.map(doc => doc.id));
-        
-        // 2. Buscar predicciones huérfanas
-        const predictionsSnapshot = await getDocs(collection(db, "predictions"));
-        const batch = writeBatch(db);
-        let orphanedCount = 0;
-        
-        predictionsSnapshot.docs.forEach(docSnapshot => {
-            const predData = docSnapshot.data();
-            if (!validUids.has(predData.userId)) {
-                batch.delete(docSnapshot.ref);
-                orphanedCount++;
-            }
-        });
-        
-        if (orphanedCount > 0) {
-            await batch.commit();
-            alert(`✅ ¡Limpieza exitosa!\n\nSe eliminaron ${orphanedCount} predicciones huérfanas.`);
-        } else {
-            alert("✅ No hay predicciones huérfanas. Todo está limpio.");
-        }
-        
-        if (window.calculateAndRender) window.calculateAndRender();
-        
-    } catch (error) {
-        console.error("Error al limpiar:", error);
-        alert("❌ Error al limpiar predicciones.");
     }
 }

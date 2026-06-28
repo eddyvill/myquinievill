@@ -1,0 +1,27 @@
+{
+  "name": "Quiniela Mundial 2026 - Softandnet",
+  "short_name": "Quiniela 2026",
+  "description": "Participa en la quiniela oficial del FIFA World Cup 2026™ de Softandnet. Predice resultados, compite con amigos y sigue la clasificación en tiempo real.",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#0a0e27",
+  "theme_color": "#0a0e27",
+  "orientation": "portrait-primary",
+  "scope": "./",
+  "lang": "es",
+  "icons": [
+    {
+      "src": "icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/maskable-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ],
+  "categories": ["sports", "games", "entertainment"]
+}
