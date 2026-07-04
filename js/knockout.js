@@ -43,7 +43,7 @@ export const knockoutMatches = [
     { id: 'M87',  round: 'R32', slotHome: '1K',  slotAway: '3DEIJL',  fixedTeams: { home: '🇨🇴 Colombia', away: '🇬🇭 Ghana' }, date: '03/07 15:00', datetime: '2026-07-03T15:00:00-04:00', status: 'scheduled', homeScore: null, awayScore: null },
     { id: 'M88',  round: 'R32', slotHome: '2D',  slotAway: '2G',      fixedTeams: { home: '🇦🇺 Australia', away: '🇪🇬 Egipto' }, date: '03/07 19:30', datetime: '2026-07-03T19:30:00-04:00', status: 'scheduled', homeScore: null, awayScore: null },
 
-    // 8avos de Final (Round of 16) - 8 partidos
+    // 8avos de Final (Round of 16) - 8 partidos de semi final
     { id: 'M89', round: 'R16', slotHome: 'WM73', slotAway: 'WM74', fixedTeams: { home: '🇨🇦 Canadá', away: '�� Marruecos' }, date: '04/07 13:00', datetime: '2026-07-04T13:00:00-04:00', status: 'scheduled', homeScore: null, awayScore: null },
     { id: 'M90', round: 'R16', slotHome: 'WM75', slotAway: 'WM76', fixedTeams: { home: '�� Paraguay', away: '�� Francia' }, date: '04/07 17:00', datetime: '2026-07-04T17:00:00-04:00', status: 'scheduled', homeScore: null, awayScore: null },
     { id: 'M91', round: 'R16', slotHome: 'WM77', slotAway: 'WM78', fixedTeams: { home: '�🇷 Brasil', away: '🇳🇴 Noruega' }, date: '05/07 16:00', datetime: '2026-07-05T16:00:00-04:00', status: 'scheduled', homeScore: null, awayScore: null },
