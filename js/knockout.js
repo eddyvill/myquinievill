@@ -44,12 +44,12 @@ export const knockoutMatches = [
     { id: 'M88',  round: 'R32', slotHome: '2D',  slotAway: '2G',      fixedTeams: { home: '🇦🇺 Australia', away: '🇪🇬 Egipto' }, date: '03/07 19:30', datetime: '2026-07-03T19:30:00-04:00', status: 'scheduled', homeScore: null, awayScore: null },
 
     // 8avos de Final (Round of 16) - 8 partidos
-    { id: 'M89', round: 'R16', slotHome: 'WM73', slotAway: 'WM74', fixedTeams: { home: '🇨🇦 Canadá', away: '�� Marruecos' }, date: '04/07 13:00', datetime: '2026-07-04T13:00:00-04:00', status: 'scheduled', homeScore: null, awayScore: null },
-    { id: 'M90', round: 'R16', slotHome: 'WM75', slotAway: 'WM76', fixedTeams: { home: '�� Paraguay', away: '�� Francia' }, date: '04/07 17:00', datetime: '2026-07-04T17:00:00-04:00', status: 'scheduled', homeScore: null, awayScore: null },
-    { id: 'M91', round: 'R16', slotHome: 'WM77', slotAway: 'WM78', fixedTeams: { home: '�🇷 Brasil', away: '🇳🇴 Noruega' }, date: '05/07 16:00', datetime: '2026-07-05T16:00:00-04:00', status: 'scheduled', homeScore: null, awayScore: null },
+    { id: 'M89', round: 'R16', slotHome: 'WM73', slotAway: 'WM74', fixedTeams: { home: '🇨🇦 Canadá', away: '🇲🇦 Marruecos' }, date: '04/07 13:00', datetime: '2026-07-04T13:00:00-04:00', status: 'scheduled', homeScore: null, awayScore: null },
+    { id: 'M90', round: 'R16', slotHome: 'WM75', slotAway: 'WM76', fixedTeams: { home: '🇵🇾 Paraguay', away: '🇫🇷 Francia' }, date: '04/07 17:00', datetime: '2026-07-04T17:00:00-04:00', status: 'scheduled', homeScore: null, awayScore: null },
+    { id: 'M91', round: 'R16', slotHome: 'WM77', slotAway: 'WM78', fixedTeams: { home: '🇧🇷 Brasil', away: '🇳🇴 Noruega' }, date: '05/07 16:00', datetime: '2026-07-05T16:00:00-04:00', status: 'scheduled', homeScore: null, awayScore: null },
     { id: 'M92', round: 'R16', slotHome: 'WM79', slotAway: 'WM80', fixedTeams: { home: '🇲🇽 México', away: '🏴󠁧󠁢󠁥󠁮󠁧󠁿 Inglaterra' }, date: '05/07 20:00', datetime: '2026-07-05T20:00:00-04:00', status: 'scheduled', homeScore: null, awayScore: null },
-    { id: 'M93', round: 'R16', slotHome: 'WM81', slotAway: 'WM82', fixedTeams: { home: '�� Portugal', away: '🇸 España' }, date: '06/07 15:00', datetime: '2026-07-06T15:00:00-04:00', status: 'scheduled', homeScore: null, awayScore: null },
-    { id: 'M94', round: 'R16', slotHome: 'WM83', slotAway: 'WM84', fixedTeams: { home: '�� EE.UU.', away: '�� Bélgica' }, date: '06/07 20:00', datetime: '2026-07-06T20:00:00-04:00', status: 'scheduled', homeScore: null, awayScore: null },
+    { id: 'M93', round: 'R16', slotHome: 'WM81', slotAway: 'WM82', fixedTeams: { home: '🇵🇹 Portugal', away: '🇪🇸 España' }, date: '06/07 15:00', datetime: '2026-07-06T15:00:00-04:00', status: 'scheduled', homeScore: null, awayScore: null },
+    { id: 'M94', round: 'R16', slotHome: 'WM83', slotAway: 'WM84', fixedTeams: { home: '🇺🇸 EE.UU.', away: '🇧🇪 Bélgica' }, date: '06/07 20:00', datetime: '2026-07-06T20:00:00-04:00', status: 'scheduled', homeScore: null, awayScore: null },
     { id: 'M95', round: 'R16', slotHome: 'WM85', slotAway: 'WM86', fixedTeams: { home: '🇦🇷 Argentina', away: '🇪🇬 Egipto' }, date: '07/07 12:00', datetime: '2026-07-07T12:00:00-04:00', status: 'scheduled', homeScore: null, awayScore: null },
     { id: 'M96', round: 'R16', slotHome: 'WM87', slotAway: 'WM88', fixedTeams: { home: '🇨🇭 Suiza', away: '🇨🇴 Colombia' }, date: '07/07 16:00', datetime: '2026-07-07T16:00:00-04:00', status: 'scheduled', homeScore: null, awayScore: null },
 
