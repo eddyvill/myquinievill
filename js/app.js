@@ -1,5 +1,5 @@
 // js/app.js
-import { firebaseConfig, ADMIN_PASSWORD } from './config.js';
+import { firebaseConfig, ADMIN_PASSWORD, TOP_SCORER_CANDIDATES, TOP_SCORER_BONUS } from './config.js';
 import { allMatches } from './data.js';
 import { knockoutMatches, resolveKnockoutMatches, getRoundName, getRoundTabName } from './knockout.js';
 import { calculatePoints, renderPointsBreakdownHTML } from './scoring.js';
@@ -11,7 +11,7 @@ import { getFirestore, collection, doc, setDoc, onSnapshot, getDocs, writeBatch,
 // Registrar Service Worker para PWA
 if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
-        navigator.serviceWorker.register('service-worker.js?v=7')
+        navigator.serviceWorker.register('service-worker.js?v=8')
             .then(reg => console.log('[SW] Registrado:', reg.scope))
             .catch(err => console.error('[SW] Error:', err));
     });
@@ -56,11 +56,15 @@ const db = getFirestore(app);
 let currentUser = null;
 let matchesData = [];
 let predictionsData = {};
+window.usersData = {};
 let activeGroup = 'A';
 let activeKnockoutRound = 'R32';
 let currentPhase = 'groups';
 let featuredTimerInterval = null;
 let initialPhaseSet = false;
+let activePredictionsModalMatchId = null;
+let topScorerPicksData = {};
+let topScorerConfigData = null;
 
 function determineInitialPhase(matches) {
     const groupMatches = matches.filter(m => m.group && /^[A-L]$/.test(m.group));
@@ -200,6 +204,17 @@ async function migrateAccount(oldUid, newUid, name) {
             batch.delete(docSnap.ref);
         });
         
+        // Migrar apuesta de goleador
+        const oldTopScorerRef = doc(db, "topScorerPicks", oldUid);
+        const oldTopScorerSnap = await getDocs(query(collection(db, "topScorerPicks"), where("userId", "==", oldUid)));
+        oldTopScorerSnap.docs.forEach(docSnap => {
+            batch.set(doc(db, "topScorerPicks", newUid), {
+                ...docSnap.data(),
+                userId: newUid
+            });
+            batch.delete(docSnap.ref);
+        });
+        
         const oldUserRef = doc(db, "users", oldUid);
         batch.delete(oldUserRef);
         
@@ -272,6 +287,17 @@ function initApp() {
         predictionsData = {};
         snapshot.docs.forEach(doc => { predictionsData[doc.id] = doc.data(); });
         calculateAndRender();
+    });
+
+    onSnapshot(collection(db, "topScorerPicks"), (snapshot) => {
+        topScorerPicksData = {};
+        snapshot.docs.forEach(doc => { topScorerPicksData[doc.id] = doc.data(); });
+        renderTopScorerSection();
+    });
+
+    onSnapshot(doc(db, "topScorerConfig", "actual"), (docSnap) => {
+        topScorerConfigData = docSnap.exists() ? docSnap.data() : null;
+        renderTopScorerSection();
     });
 }
 
@@ -533,6 +559,7 @@ function renderGroupMatches(container) {
             <button onclick="window.clearPrediction('${match.id}')" class="mt-3 w-full text-xs text-red-400 hover:text-red-300 hover:bg-red-900/20 py-2 rounded-lg transition flex items-center justify-center gap-2 border border-red-900/30">
                 <i class="fas fa-trash-alt"></i> Borrar
             </button>` : '';
+        const transparencyBtn = `<button onclick="window.showMatchPredictions('${match.id}')" class="text-[10px] text-slate-400 hover:text-fifa-gold transition flex items-center gap-1" title="Ver apuestas de todos los jugadores"><i class="fas fa-eye"></i> <span class="hidden sm:inline">Ver apuestas</span></button>`;
 
         return `
         <div class="match-card rounded-xl p-3 border-2 ${resultClass}">
@@ -546,7 +573,7 @@ function renderGroupMatches(container) {
                 <div class="flex-1 text-left min-w-0"><div class="font-title font-bold text-sm sm:text-base text-white truncate">${match.awayTeam}</div></div>
             </div>
             ${!isLocked ? `<div class="text-center mt-2"><span class="text-[10px] sm:text-xs text-slate-400 font-semibold bg-slate-900/50 px-2 py-1 rounded"><i class="far fa-clock mr-1"></i>${match.date}</span></div>` : ''}
-            ${lockBadge}${clearBtn}${actualScore}${pointsSummary}
+            <div class="flex items-center justify-center gap-3 mt-2">${transparencyBtn}${lockBadge}</div>${clearBtn}${actualScore}${pointsSummary}
         </div>`;
     }).join('');
 }
@@ -555,6 +582,9 @@ function renderKnockoutMatches(container) {
     console.log('[Knockout] Renderizando ronda:', activeKnockoutRound, 'total matches:', matchesData.length, 'con round:', matchesData.filter(m => m.round).length);
     const roundMatches = matchesData.filter(m => m.round === activeKnockoutRound && !m.group).sort((a, b) => a.id.localeCompare(b.id));
     console.log('[Knockout] Partidos encontrados:', roundMatches.length);
+    if (roundMatches.length > 0) {
+        console.log('[Knockout] Primer partido:', JSON.stringify({ id: roundMatches[0].id, homeTeam: roundMatches[0].homeTeam, awayTeam: roundMatches[0].awayTeam, fixedTeams: roundMatches[0].fixedTeams, homeResolved: roundMatches[0].homeResolved }));
+    }
     const now = new Date();
 
     if (roundMatches.length === 0) {
@@ -577,6 +607,7 @@ function renderKnockoutMatches(container) {
             <button onclick="window.clearPrediction('${match.id}')" class="mt-2 w-full text-xs text-red-400 hover:text-red-300 hover:bg-red-900/20 py-2 rounded-lg transition flex items-center justify-center gap-2 border border-red-900/30">
                 <i class="fas fa-trash-alt"></i> Borrar
             </button>` : '';
+        const transparencyBtn = `<button onclick="window.showMatchPredictions('${match.id}')" class="text-[10px] text-slate-400 hover:text-fifa-gold transition flex items-center gap-1" title="Ver apuestas de todos los jugadores"><i class="fas fa-eye"></i> <span class="hidden sm:inline">Ver apuestas</span></button>`;
 
         const homeResolved = match.homeResolved !== false;
         const awayResolved = match.awayResolved !== false;
@@ -604,7 +635,7 @@ function renderKnockoutMatches(container) {
                     ${!awayResolved ? `<div class="knockout-team-source"><i class="fas fa-question-circle mr-1"></i>${awaySource}</div>` : ''}
                 </div>
             </div>
-            ${lockBadge}${clearBtn}${actualScore}${pointsSummary}
+            <div class="flex items-center justify-center gap-3 mt-2">${transparencyBtn}${lockBadge}</div>${clearBtn}${actualScore}${pointsSummary}
         </div>`;
     }).join('');
 
@@ -620,6 +651,115 @@ function renderKnockoutMatches(container) {
 }
 
 // ==========================================
+// TOP SCORER SECTION
+// ==========================================
+let topScorerSelectedId = null;
+
+function renderTopScorerSection() {
+    const container = document.getElementById('top-scorer-section');
+    if (!container) return;
+
+    if (!currentUser) {
+        container.innerHTML = '';
+        return;
+    }
+
+    const myUid = currentUser.uid;
+    const myPick = topScorerPicksData[myUid] || null;
+    const locked = myPick && myPick.locked;
+    const actualWinner = topScorerConfigData ? topScorerConfigData.winner : null;
+    const actualWinnerName = topScorerConfigData ? topScorerConfigData.winnerName : null;
+
+    let bodyHtml = '';
+
+    if (locked) {
+        const candidate = TOP_SCORER_CANDIDATES.find(c => c.id === myPick.playerId);
+        const displayName = candidate ? candidate.name : myPick.playerName;
+        const isCorrect = actualWinner && myPick.playerId === actualWinner;
+        bodyHtml = `
+            <div class="bg-slate-900/50 rounded-lg p-4 border border-slate-700">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-3">
+                        <i class="fas fa-futbol text-fifa-gold text-2xl"></i>
+                        <div>
+                            <div class="font-bold text-white text-base">${displayName}</div>
+                            <div class="text-[10px] text-slate-400 flex items-center gap-2 mt-0.5">
+                                <span class="locked-badge text-[10px] font-bold uppercase px-2 py-0.5 rounded inline-flex items-center gap-1"><i class="fas fa-lock"></i> Bloqueado</span>
+                                <span>Apuesta registrada</span>
+                            </div>
+                        </div>
+                    </div>
+                    ${isCorrect ? '<span class="text-emerald-400 font-bold text-sm bg-emerald-900/30 px-3 py-1 rounded-full"><i class="fas fa-check-circle mr-1"></i>¡Acertaste! +30</span>' : ''}
+                    ${actualWinner && !isCorrect ? '<span class="text-red-400 text-xs">Ganador: ' + actualWinnerName + '</span>' : ''}
+                </div>
+                ${actualWinner && isCorrect ? '' : (!actualWinner ? '' : '')}
+            </div>
+        `;
+    } else {
+        const cardsHtml = TOP_SCORER_CANDIDATES.map(c => {
+            const selected = topScorerSelectedId === c.id;
+            return `
+                <div onclick="window.selectTopScorer('${c.id}')" class="top-scorer-card ${selected ? 'border-fifa-gold bg-fifa-gold/10' : 'border-slate-600 bg-slate-800/50 hover:border-slate-500 cursor-pointer'} rounded-lg p-3 border-2 transition flex items-center gap-2">
+                    <div class="w-5 h-5 rounded-full border-2 flex items-center justify-center ${selected ? 'border-fifa-gold bg-fifa-gold' : 'border-slate-500'}">
+                        ${selected ? '<i class="fas fa-check text-fifa-dark text-[10px]"></i>' : ''}
+                    </div>
+                    <span class="font-semibold text-white text-sm">${c.name}</span>
+                </div>
+            `;
+        }).join('');
+
+        const hasSelection = topScorerSelectedId !== null;
+        bodyHtml = `
+            <p class="text-xs text-slate-400 mb-3">Elige quién será el máximo goleador del torneo. <span class="text-fifa-gold font-bold">+${TOP_SCORER_BONUS} puntos</span> si aciertas. ¡Solo una oportunidad, no podrás cambiarlo!</p>
+            <div class="grid grid-cols-2 gap-2 mb-3">
+                ${cardsHtml}
+            </div>
+            <button id="btn-save-topscorer" onclick="window.saveTopScorerPick()" class="w-full py-3 rounded-xl font-bold transition flex items-center justify-center gap-2 ${hasSelection ? 'bg-fifa-gold hover:bg-yellow-400 text-fifa-dark' : 'bg-slate-700 text-slate-400 cursor-not-allowed'}" ${hasSelection ? '' : 'disabled'}>
+                <i class="fas fa-check-circle"></i> Apostar${hasSelection ? ' por ' + TOP_SCORER_CANDIDATES.find(c => c.id === topScorerSelectedId).name : ''}
+            </button>
+        `;
+    }
+
+    container.innerHTML = `
+        <div class="bg-gradient-to-r from-slate-800 to-slate-800/30 rounded-xl p-4 border border-fifa-gold/20">
+            <div class="flex items-center gap-2 mb-2">
+                <i class="fas fa-star text-fifa-gold text-lg"></i>
+                <h3 class="font-title font-bold text-white text-base">Máximo Goleador del Mundial</h3>
+                <span class="ml-auto text-[10px] text-fifa-gold font-bold bg-fifa-gold/10 px-2 py-1 rounded">+${TOP_SCORER_BONUS} PTS</span>
+            </div>
+            ${bodyHtml}
+        </div>
+    `;
+}
+
+window.selectTopScorer = function(playerId) {
+    topScorerSelectedId = playerId;
+    renderTopScorerSection();
+};
+
+window.saveTopScorerPick = async function() {
+    if (!currentUser || !topScorerSelectedId) return;
+    const candidate = TOP_SCORER_CANDIDATES.find(c => c.id === topScorerSelectedId);
+    if (!candidate) return;
+
+    if (!confirm(`¿Apostar por ${candidate.name} como máximo goleador? Esta acción no se puede deshacer.`)) return;
+
+    try {
+        await setDoc(doc(db, "topScorerPicks", currentUser.uid), {
+            userId: currentUser.uid,
+            playerId: candidate.id,
+            playerName: candidate.name,
+            locked: true,
+            updatedAt: new Date()
+        });
+        showToast(`Apuesta registrada: ${candidate.name}`, 'success');
+    } catch (error) {
+        console.error("Error guardando apuesta de goleador:", error);
+        showToast('Error al guardar', 'error');
+    }
+};
+
+// ==========================================
 // 4. LÓGICA DE PUNTUACIÓN AVANZADA
 // ==========================================
 async function calculateAndRender() {
@@ -627,10 +767,12 @@ async function calculateAndRender() {
     if (!currentUser) return;
 
     const usersSnapshot = await getDocs(collection(db, "users"));
+    window.usersData = {};
     let leaderboard = {};
 
     usersSnapshot.docs.forEach(doc => {
         const userData = doc.data();
+        window.usersData[doc.id] = userData;
         leaderboard[doc.id] = { name: userData.name || "Jugador", exacts: 0, score: 0, uid: doc.id };
     });
 
@@ -675,6 +817,21 @@ async function calculateAndRender() {
         });
     });
 
+    // Top scorer bonus points
+    if (topScorerConfigData && topScorerConfigData.winner) {
+        Object.keys(topScorerPicksData).forEach(uid => {
+            const pick = topScorerPicksData[uid];
+            if (pick && pick.playerId === topScorerConfigData.winner && pick.locked) {
+                if (leaderboard[uid]) {
+                    leaderboard[uid].score += TOP_SCORER_BONUS;
+                    if (uid === currentUser.uid) {
+                        userStats.score += TOP_SCORER_BONUS;
+                    }
+                }
+            }
+        });
+    }
+
     document.getElementById('user-score').textContent = userStats.score;
     document.getElementById('total-players').textContent = Object.keys(leaderboard).length;
 
@@ -683,7 +840,13 @@ async function calculateAndRender() {
         return b.exacts - a.exacts;
     });
     renderLeaderboard(sorted);
+
+    if (activePredictionsModalMatchId) {
+        renderPredictionsTable(activePredictionsModalMatchId);
+    }
+
     renderMatches();
+    renderTopScorerSection();
 }
 window.calculateAndRender = calculateAndRender;
 
@@ -806,10 +969,71 @@ window.clearPrediction = async function(matchId) {
     await deleteDoc(doc(db, "predictions", `${currentUser.uid}_${matchId}`));
 };
 
+function renderPredictionsTable(matchId) {
+    const match = matchesData.find(m => m.id === matchId);
+    if (!match) return;
+
+    const header = document.getElementById('predictions-modal-header');
+    header.textContent = `${match.homeTeam || ''} vs ${match.awayTeam || ''}`;
+
+    const ptsHeader = document.getElementById('predictions-pts-header');
+    if (match.status === 'finished') {
+        ptsHeader.classList.remove('hidden');
+    } else {
+        ptsHeader.classList.add('hidden');
+    }
+
+    const tbody = document.getElementById('predictions-table-body');
+    let html = '';
+    const entries = [];
+
+    Object.keys(predictionsData).forEach(key => {
+        if (!key.endsWith(`_${matchId}`)) return;
+        const [uid] = key.split('_');
+        const pred = predictionsData[key];
+        const userName = (window.usersData[uid] && window.usersData[uid].name) || 'Jugador';
+
+        let ptsHtml = '';
+        if (match.status === 'finished' && pred.home !== null && pred.home !== undefined && pred.away !== null && pred.away !== undefined) {
+            const result = calculatePoints(pred, match);
+            if (result.points > 0) {
+                ptsHtml = `<span class="text-fifa-gold font-bold">+${result.points}</span>`;
+            } else {
+                ptsHtml = `<span class="text-slate-500">0</span>`;
+            }
+        }
+
+        entries.push({ userName, pred, ptsHtml });
+    });
+
+    entries.sort((a, b) => a.userName.localeCompare(b.userName));
+
+    entries.forEach(e => {
+        const home = (e.pred.home !== null && e.pred.home !== undefined) ? e.pred.home : '-';
+        const away = (e.pred.away !== null && e.pred.away !== undefined) ? e.pred.away : '-';
+        html += `<tr class="hover:bg-slate-800/50 transition">
+            <td class="px-3 py-2 text-white font-semibold text-xs sm:text-sm">${e.userName}</td>
+            <td class="px-3 py-2 text-center text-white font-bold text-sm">${home}</td>
+            <td class="px-3 py-2 text-center text-white font-bold text-sm">${away}</td>
+            ${match.status === 'finished' ? `<td class="px-3 py-2 text-right text-sm">${e.ptsHtml}</td>` : ''}
+        </tr>`;
+    });
+
+    tbody.innerHTML = html || '<tr><td colspan="4" class="text-center py-6 text-slate-400"><i class="fas fa-inbox text-2xl mb-2 block"></i>Nadie ha apostado aún en este partido</td></tr>';
+}
+
+window.showMatchPredictions = function(matchId) {
+    activePredictionsModalMatchId = matchId;
+    document.getElementById('predictions-modal').classList.remove('hidden');
+    renderPredictionsTable(matchId);
+};
+
 document.querySelectorAll('.btn-close-modal').forEach(btn => {
     btn.addEventListener('click', () => {
         document.getElementById('leaderboard-modal').classList.add('hidden');
         document.getElementById('standings-modal').classList.add('hidden');
+        document.getElementById('predictions-modal').classList.add('hidden');
+        activePredictionsModalMatchId = null;
     });
 });
 

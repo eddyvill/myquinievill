@@ -25,38 +25,37 @@ const ROUND_TABS = {
 // según la tabla de combinaciones del Anexo C de FIFA.
 export const knockoutMatches = [
     // 16avos de Final (Round of 32) - 16 partidos
-    // Equipos hardcodeados según clasificación real del Mundial 2026.
-    { id: 'M73',  round: 'R32', slotHome: '2A',  slotAway: '2B',      fixedTeams: { home: '🇿🇦 Sudáfrica', away: '🇨🇦 Canadá' }, date: '28/06 15:00', datetime: '2026-06-28T15:00:00-04:00', status: 'scheduled', homeScore: null, awayScore: null },
-    { id: 'M74',  round: 'R32', slotHome: '1E',  slotAway: '3ABCDF',  fixedTeams: { home: '🇩🇪 Alemania', away: '🇵🇾 Paraguay' }, date: '29/06 15:00', datetime: '2026-06-29T15:00:00-04:00', status: 'scheduled', homeScore: null, awayScore: null },
-    { id: 'M75',  round: 'R32', slotHome: '1F',  slotAway: '2C',      fixedTeams: { home: '🇳🇱 Países Bajos', away: '🇲🇦 Marruecos' }, date: '29/06 15:00', datetime: '2026-06-29T15:00:00-04:00', status: 'scheduled', homeScore: null, awayScore: null },
-    { id: 'M76',  round: 'R32', slotHome: '1C',  slotAway: '2F',      fixedTeams: { home: '🇧🇷 Brasil', away: '🇯🇵 Japón' }, date: '29/06 19:30', datetime: '2026-06-29T19:30:00-04:00', status: 'scheduled', homeScore: null, awayScore: null },
-    { id: 'M77',  round: 'R32', slotHome: '1I',  slotAway: '3CDFGH',  fixedTeams: { home: '🇫🇷 Francia', away: '🇸🇪 Suecia' }, date: '30/06 15:00', datetime: '2026-06-30T15:00:00-04:00', status: 'scheduled', homeScore: null, awayScore: null },
-    { id: 'M78',  round: 'R32', slotHome: '2E',  slotAway: '2I',      fixedTeams: { home: '🇨🇮 Costa de Marfil', away: '🇳🇴 Noruega' }, date: '30/06 15:00', datetime: '2026-06-30T15:00:00-04:00', status: 'scheduled', homeScore: null, awayScore: null },
-    { id: 'M79',  round: 'R32', slotHome: '1A',  slotAway: '3CEFHI',  fixedTeams: { home: '🇲🇽 México', away: '🇪🇨 Ecuador' }, date: '30/06 19:30', datetime: '2026-06-30T19:30:00-04:00', status: 'scheduled', homeScore: null, awayScore: null },
-    { id: 'M80',  round: 'R32', slotHome: '1L',  slotAway: '3EHIJK',  fixedTeams: { home: '🏴󠁧󠁢󠁥󠁮󠁧󠁿 Inglaterra', away: '🇨🇩 RD Congo' }, date: '01/07 12:00', datetime: '2026-07-01T12:00:00-04:00', status: 'scheduled', homeScore: null, awayScore: null },
-    { id: 'M81',  round: 'R32', slotHome: '1D',  slotAway: '3BEFIJ',  fixedTeams: { home: '🇺🇸 EE.UU.', away: '🇧🇦 Bosnia-Herzegovina' }, date: '01/07 18:00', datetime: '2026-07-01T18:00:00-04:00', status: 'scheduled', homeScore: null, awayScore: null },
-    { id: 'M82',  round: 'R32', slotHome: '1G',  slotAway: '3AEHIJ',  fixedTeams: { home: '🇧🇪 Bélgica', away: '🇸🇳 Senegal' }, date: '01/07 16:00', datetime: '2026-07-01T16:00:00-04:00', status: 'scheduled', homeScore: null, awayScore: null },
-    { id: 'M83',  round: 'R32', slotHome: '2K',  slotAway: '2L',      fixedTeams: { home: '🇵🇹 Portugal', away: '🇭🇷 Croacia' }, date: '02/07 15:00', datetime: '2026-07-02T15:00:00-04:00', status: 'scheduled', homeScore: null, awayScore: null },
-    { id: 'M84',  round: 'R32', slotHome: '1H',  slotAway: '2J',      fixedTeams: { home: '🇪🇸 España', away: '🇦🇹 Austria' }, date: '02/07 15:00', datetime: '2026-07-02T15:00:00-04:00', status: 'scheduled', homeScore: null, awayScore: null },
-    { id: 'M85',  round: 'R32', slotHome: '1B',  slotAway: '3EFGIJ',  fixedTeams: { home: '🇨🇭 Suiza', away: '🇩🇿 Argelia' }, date: '02/07 19:30', datetime: '2026-07-02T19:30:00-04:00', status: 'scheduled', homeScore: null, awayScore: null },
-    { id: 'M86',  round: 'R32', slotHome: '1J',  slotAway: '2H',      fixedTeams: { home: '🇦🇷 Argentina', away: '🇨🇻 Cabo Verde' }, date: '03/07 15:00', datetime: '2026-07-03T15:00:00-04:00', status: 'scheduled', homeScore: null, awayScore: null },
-    { id: 'M87',  round: 'R32', slotHome: '1K',  slotAway: '3DEIJL',  fixedTeams: { home: '🇨🇴 Colombia', away: '🇬🇭 Ghana' }, date: '03/07 15:00', datetime: '2026-07-03T15:00:00-04:00', status: 'scheduled', homeScore: null, awayScore: null },
-    { id: 'M88',  round: 'R32', slotHome: '2D',  slotAway: '2G',      fixedTeams: { home: '🇦🇺 Australia', away: '🇪🇬 Egipto' }, date: '03/07 19:30', datetime: '2026-07-03T19:30:00-04:00', status: 'scheduled', homeScore: null, awayScore: null },
+    { id: 'M73',  round: 'R32', slotHome: '2A',  slotAway: '2B',      fixedTeams: { home: '🇿🇦 Sudáfrica', away: '🇨🇦 Canadá' }, date: '28/06 15:00', datetime: '2026-06-28T15:00:00-04:00', status: 'finished', homeScore: 0, awayScore: 1 },
+    { id: 'M74',  round: 'R32', slotHome: '1E',  slotAway: '3ABCDF',  fixedTeams: { home: '🇩🇪 Alemania', away: '🇵🇾 Paraguay' }, date: '29/06 15:00', datetime: '2026-06-29T15:00:00-04:00', status: 'finished', homeScore: 1, awayScore: 1, winner: 'away' },
+    { id: 'M75',  round: 'R32', slotHome: '1F',  slotAway: '2C',      fixedTeams: { home: '🇳🇱 Países Bajos', away: '🇲🇦 Marruecos' }, date: '29/06 15:00', datetime: '2026-06-29T15:00:00-04:00', status: 'finished', homeScore: 1, awayScore: 1, winner: 'away' },
+    { id: 'M76',  round: 'R32', slotHome: '1C',  slotAway: '2F',      fixedTeams: { home: '🇧🇷 Brasil', away: '🇯🇵 Japón' }, date: '29/06 19:30', datetime: '2026-06-29T19:30:00-04:00', status: 'finished', homeScore: 2, awayScore: 1 },
+    { id: 'M77',  round: 'R32', slotHome: '1I',  slotAway: '3CDFGH',  fixedTeams: { home: '🇫🇷 Francia', away: '🇸🇪 Suecia' }, date: '30/06 15:00', datetime: '2026-06-30T15:00:00-04:00', status: 'finished', homeScore: 1, awayScore: 2 },
+    { id: 'M78',  round: 'R32', slotHome: '2E',  slotAway: '2I',      fixedTeams: { home: '🇨🇮 Costa de Marfil', away: '🇳🇴 Noruega' }, date: '30/06 15:00', datetime: '2026-06-30T15:00:00-04:00', status: 'finished', homeScore: 1, awayScore: 2 },
+    { id: 'M79',  round: 'R32', slotHome: '1A',  slotAway: '3CEFHI',  fixedTeams: { home: '🇲🇽 México', away: '🇪🇨 Ecuador' }, date: '30/06 19:30', datetime: '2026-06-30T19:30:00-04:00', status: 'finished', homeScore: 1, awayScore: 0 },
+    { id: 'M80',  round: 'R32', slotHome: '1L',  slotAway: '3EHIJK',  fixedTeams: { home: '🏴󠁧󠁢󠁥󠁮󠁧󠁿 Inglaterra', away: '🇨🇩 RD Congo' }, date: '01/07 12:00', datetime: '2026-07-01T12:00:00-04:00', status: 'finished', homeScore: 2, awayScore: 0 },
+    { id: 'M81',  round: 'R32', slotHome: '1D',  slotAway: '3BEFIJ',  fixedTeams: { home: '🇺🇸 EE.UU.', away: '🇧🇦 Bosnia-Herzegovina' }, date: '01/07 18:00', datetime: '2026-07-01T18:00:00-04:00', status: 'finished', homeScore: 2, awayScore: 0 },
+    { id: 'M82',  round: 'R32', slotHome: '1G',  slotAway: '3AEHIJ',  fixedTeams: { home: '🇧🇪 Bélgica', away: '🇸🇳 Senegal' }, date: '01/07 16:00', datetime: '2026-07-01T16:00:00-04:00', status: 'finished', homeScore: 3, awayScore: 1 },
+    { id: 'M83',  round: 'R32', slotHome: '2K',  slotAway: '2L',      fixedTeams: { home: '🇵🇹 Portugal', away: '🇭🇷 Croacia' }, date: '02/07 15:00', datetime: '2026-07-02T15:00:00-04:00', status: 'finished', homeScore: 1, awayScore: 1, winner: 'home' },
+    { id: 'M84',  round: 'R32', slotHome: '1H',  slotAway: '2J',      fixedTeams: { home: '🇪🇸 España', away: '🇦🇹 Austria' }, date: '02/07 15:00', datetime: '2026-07-02T15:00:00-04:00', status: 'finished', homeScore: 2, awayScore: 1 },
+    { id: 'M85',  round: 'R32', slotHome: '1B',  slotAway: '3EFGIJ',  fixedTeams: { home: '🇨🇭 Suiza', away: '🇩🇿 Argelia' }, date: '02/07 19:30', datetime: '2026-07-02T19:30:00-04:00', status: 'finished', homeScore: 1, awayScore: 0 },
+    { id: 'M86',  round: 'R32', slotHome: '1J',  slotAway: '2H',      fixedTeams: { home: '🇦🇷 Argentina', away: '🇨🇻 Cabo Verde' }, date: '03/07 15:00', datetime: '2026-07-03T15:00:00-04:00', status: 'finished', homeScore: 3, awayScore: 0 },
+    { id: 'M87',  round: 'R32', slotHome: '1K',  slotAway: '3DEIJL',  fixedTeams: { home: '🇨🇴 Colombia', away: '🇬🇭 Ghana' }, date: '03/07 15:00', datetime: '2026-07-03T15:00:00-04:00', status: 'finished', homeScore: 0, awayScore: 0, winner: 'home' },
+    { id: 'M88',  round: 'R32', slotHome: '2D',  slotAway: '2G',      fixedTeams: { home: '🇦🇺 Australia', away: '🇪🇬 Egipto' }, date: '03/07 19:30', datetime: '2026-07-03T19:30:00-04:00', status: 'finished', homeScore: 1, awayScore: 1, winner: 'away' },
 
-    // 8avos de Final (Round of 16) - 8 partidos de semi final
-    { id: 'M89', round: 'R16', slotHome: 'WM73', slotAway: 'WM74', fixedTeams: { home: '🇨🇦 Canadá', away: '�� Marruecos' }, date: '04/07 13:00', datetime: '2026-07-04T13:00:00-04:00', status: 'scheduled', homeScore: null, awayScore: null },
-    { id: 'M90', round: 'R16', slotHome: 'WM75', slotAway: 'WM76', fixedTeams: { home: '�� Paraguay', away: '�� Francia' }, date: '04/07 17:00', datetime: '2026-07-04T17:00:00-04:00', status: 'scheduled', homeScore: null, awayScore: null },
-    { id: 'M91', round: 'R16', slotHome: 'WM77', slotAway: 'WM78', fixedTeams: { home: '�🇷 Brasil', away: '🇳🇴 Noruega' }, date: '05/07 16:00', datetime: '2026-07-05T16:00:00-04:00', status: 'scheduled', homeScore: null, awayScore: null },
-    { id: 'M92', round: 'R16', slotHome: 'WM79', slotAway: 'WM80', fixedTeams: { home: '🇲🇽 México', away: '🏴󠁧󠁢󠁥󠁮󠁧󠁿 Inglaterra' }, date: '05/07 20:00', datetime: '2026-07-05T20:00:00-04:00', status: 'scheduled', homeScore: null, awayScore: null },
-    { id: 'M93', round: 'R16', slotHome: 'WM81', slotAway: 'WM82', fixedTeams: { home: '�� Portugal', away: '🇸 España' }, date: '06/07 15:00', datetime: '2026-07-06T15:00:00-04:00', status: 'scheduled', homeScore: null, awayScore: null },
-    { id: 'M94', round: 'R16', slotHome: 'WM83', slotAway: 'WM84', fixedTeams: { home: '�� EE.UU.', away: '�� Bélgica' }, date: '06/07 20:00', datetime: '2026-07-06T20:00:00-04:00', status: 'scheduled', homeScore: null, awayScore: null },
-    { id: 'M95', round: 'R16', slotHome: 'WM85', slotAway: 'WM86', fixedTeams: { home: '🇦🇷 Argentina', away: '🇪🇬 Egipto' }, date: '07/07 12:00', datetime: '2026-07-07T12:00:00-04:00', status: 'scheduled', homeScore: null, awayScore: null },
-    { id: 'M96', round: 'R16', slotHome: 'WM87', slotAway: 'WM88', fixedTeams: { home: '🇨🇭 Suiza', away: '🇨🇴 Colombia' }, date: '07/07 16:00', datetime: '2026-07-07T16:00:00-04:00', status: 'scheduled', homeScore: null, awayScore: null },
+    // 8avos de Final (Round of 16) - 8 partidos
+    { id: 'M89', round: 'R16', slotHome: 'WM73', slotAway: 'WM74', fixedTeams: { home: '🇨🇦 Canadá', away: '🇲🇦 Marruecos' }, date: '04/07 13:00', datetime: '2026-07-04T13:00:00-04:00', status: 'finished', homeScore: 0, awayScore: 3 },
+    { id: 'M90', round: 'R16', slotHome: 'WM75', slotAway: 'WM76', fixedTeams: { home: '🇵🇾 Paraguay', away: '🇫🇷 Francia' }, date: '04/07 17:00', datetime: '2026-07-04T17:00:00-04:00', status: 'finished', homeScore: 0, awayScore: 1 },
+    { id: 'M91', round: 'R16', slotHome: 'WM77', slotAway: 'WM78', fixedTeams: { home: '🇧🇷 Brasil', away: '🇳🇴 Noruega' }, date: '05/07 16:00', datetime: '2026-07-05T16:00:00-04:00', status: 'finished', homeScore: 1, awayScore: 2 },
+    { id: 'M92', round: 'R16', slotHome: 'WM79', slotAway: 'WM80', fixedTeams: { home: '🇲🇽 México', away: '🏴󠁧󠁢󠁥󠁮󠁧󠁿 Inglaterra' }, date: '05/07 20:00', datetime: '2026-07-05T20:00:00-04:00', status: 'finished', homeScore: 2, awayScore: 3 },
+    { id: 'M93', round: 'R16', slotHome: 'WM81', slotAway: 'WM82', fixedTeams: { home: '🇵🇹 Portugal', away: '🇪🇸 España' }, date: '06/07 15:00', datetime: '2026-07-06T15:00:00-04:00', status: 'finished', homeScore: 0, awayScore: 1 },
+    { id: 'M94', round: 'R16', slotHome: 'WM83', slotAway: 'WM84', fixedTeams: { home: '🇺🇸 EE.UU.', away: '🇧🇪 Bélgica' }, date: '06/07 20:00', datetime: '2026-07-06T20:00:00-04:00', status: 'finished', homeScore: 1, awayScore: 4 },
+    { id: 'M95', round: 'R16', slotHome: 'WM85', slotAway: 'WM86', fixedTeams: { home: '🇦🇷 Argentina', away: '🇪🇬 Egipto' }, date: '07/07 12:00', datetime: '2026-07-07T12:00:00-04:00', status: 'finished', homeScore: 3, awayScore: 2 },
+    { id: 'M96', round: 'R16', slotHome: 'WM87', slotAway: 'WM88', fixedTeams: { home: '🇨🇭 Suiza', away: '🇨🇴 Colombia' }, date: '07/07 16:00', datetime: '2026-07-07T16:00:00-04:00', status: 'finished', homeScore: 0, awayScore: 0, winner: 'home' },
 
     // 4tos de Final - 4 partidos
-    { id: 'M97', round: 'QF', slotHome: 'WM89', slotAway: 'WM90', date: '10/07 15:00', datetime: '2026-07-10T15:00:00-04:00', status: 'scheduled', homeScore: null, awayScore: null },
-    { id: 'M98', round: 'QF', slotHome: 'WM91', slotAway: 'WM92', date: '10/07 19:30', datetime: '2026-07-10T19:30:00-04:00', status: 'scheduled', homeScore: null, awayScore: null },
-    { id: 'M99', round: 'QF', slotHome: 'WM93', slotAway: 'WM94', date: '11/07 15:00', datetime: '2026-07-11T15:00:00-04:00', status: 'scheduled', homeScore: null, awayScore: null },
+    { id: 'M97', round: 'QF', slotHome: 'WM89', slotAway: 'WM90', date: '09/07 16:00', datetime: '2026-07-09T16:00:00-04:00', status: 'scheduled', homeScore: null, awayScore: null },
+    { id: 'M98', round: 'QF', slotHome: 'WM93', slotAway: 'WM94', date: '10/07 19:30', datetime: '2026-07-10T19:30:00-04:00', status: 'scheduled', homeScore: null, awayScore: null },
+    { id: 'M99', round: 'QF', slotHome: 'WM91', slotAway: 'WM92', date: '11/07 15:00', datetime: '2026-07-11T15:00:00-04:00', status: 'scheduled', homeScore: null, awayScore: null },
     { id: 'M100', round: 'QF', slotHome: 'WM95', slotAway: 'WM96', date: '11/07 19:30', datetime: '2026-07-11T19:30:00-04:00', status: 'scheduled', homeScore: null, awayScore: null },
 
     // Semifinales - 2 partidos
@@ -222,10 +221,15 @@ export function resolveSlot(slot, allMatches, thirdPlaceAssignments = {}) {
         }
         if (match.status === 'finished' && match.homeScore !== null && match.awayScore !== null) {
             let winner, loser;
-            if (match.homeScore > match.awayScore) { winner = match.homeTeam; loser = match.awayTeam; }
-            else if (match.homeScore < match.awayScore) { winner = match.awayTeam; loser = match.homeTeam; }
+            const matchHome = match.homeTeam || (match.fixedTeams ? match.fixedTeams.home : null);
+            const matchAway = match.awayTeam || (match.fixedTeams ? match.fixedTeams.away : null);
+            if (match.homeScore > match.awayScore) { winner = matchHome; loser = matchAway; }
+            else if (match.homeScore < match.awayScore) { winner = matchAway; loser = matchHome; }
+            else if (match.winner) {
+                if (match.winner === 'home') { winner = matchHome; loser = matchAway; }
+                else { winner = matchAway; loser = matchHome; }
+            }
             else {
-                // Empate en fase final: requiere definición por penales.
                 return { name: `Ganador ${matchId} (penales)`, resolved: false, source: `${slot} - requiere definición`, team: null };
             }
             const teamName = isWinner ? winner : loser;

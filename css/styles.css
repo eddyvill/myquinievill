@@ -338,6 +338,18 @@ body { font-family: 'Inter', sans-serif; background: linear-gradient(135deg, #0a
 }
 
 /* ==========================================
+   TOP SCORER SECTION
+   ========================================== */
+.top-scorer-card {
+    transition: all 0.2s ease;
+    cursor: pointer;
+    user-select: none;
+}
+.top-scorer-card:active {
+    transform: scale(0.97);
+}
+
+/* ==========================================
    AJUSTES PARA MÓVILES DE PANTALLA PEQUEÑA
    ========================================== */
 @media (max-width: 400px) {
