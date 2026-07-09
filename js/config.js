@@ -36,14 +36,30 @@ export const SCORING_CONFIG = {
         knockoutMultiplier: 1,   // Sin multiplicador
         roundBonuses: {}
     },
-    knockout: {
+    knockoutEarly: {
+        exactScore: 12,          // Marcador exacto (original)
+        correctResult: 5,        // Ganador/empate correcto (original)
+        correctGoalDifference: 2,// Diferencia de gol correcta (original)
+        exactHomeGoals: 2,       // Bono por acertar goles del local (original)
+        exactAwayGoals: 2,       // Bono por acertar goles del visitante (original)
+        knockoutMultiplier: 2,   // Multiplicador x2 en toda la fase final
+        roundBonuses: {
+            R32: 0,
+            R16: 0,
+            QF: 1,
+            SF: 2,
+            TP: 2,
+            F: 5
+        }
+    },
+    knockoutLate: {
         exactScore: 36,          // Marcador exacto (x3)
         correctResult: 15,       // Ganador/empate correcto (x3)
         correctGoalDifference: 6,// Diferencia de gol correcta (x3)
         exactHomeGoals: 6,       // Bono por acertar goles del local (x3)
         exactAwayGoals: 6,       // Bono por acertar goles del visitante (x3)
-        knockoutMultiplier: 2,   // Multiplicador x2 en toda la fase final (sin cambios)
-        roundBonuses: {          // Bonus extra por ronda (x3)
+        knockoutMultiplier: 2,   // Multiplicador x2 en toda la fase final
+        roundBonuses: {
             R32: 0,
             R16: 0,
             QF: 3,
