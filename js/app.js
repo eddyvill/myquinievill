@@ -204,16 +204,19 @@ async function migrateAccount(oldUid, newUid, name) {
             batch.delete(docSnap.ref);
         });
         
-        // Migrar apuesta de goleador
-        const oldTopScorerRef = doc(db, "topScorerPicks", oldUid);
-        const oldTopScorerSnap = await getDocs(query(collection(db, "topScorerPicks"), where("userId", "==", oldUid)));
-        oldTopScorerSnap.docs.forEach(docSnap => {
-            batch.set(doc(db, "topScorerPicks", newUid), {
-                ...docSnap.data(),
-                userId: newUid
+        // Migrar apuesta de goleador (si existe)
+        try {
+            const oldTopScorerSnap = await getDocs(query(collection(db, "topScorerPicks"), where("userId", "==", oldUid)));
+            oldTopScorerSnap.docs.forEach(docSnap => {
+                batch.set(doc(db, "topScorerPicks", newUid), {
+                    ...docSnap.data(),
+                    userId: newUid
+                });
+                batch.delete(docSnap.ref);
             });
-            batch.delete(docSnap.ref);
-        });
+        } catch (e) {
+            console.warn("[Migrate] No se pudo migrar apuesta de goleador:", e);
+        }
         
         const oldUserRef = doc(db, "users", oldUid);
         batch.delete(oldUserRef);
