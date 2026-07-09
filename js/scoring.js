@@ -6,8 +6,9 @@
 import { SCORING_CONFIG } from './config.js';
 
 function getConfigForMatch(match) {
-    const isKnockout = !!match.round;
-    return isKnockout ? SCORING_CONFIG.knockout : SCORING_CONFIG.groups;
+    if (!match.round) return SCORING_CONFIG.groups;
+    if (match.round === 'R32' || match.round === 'R16') return SCORING_CONFIG.knockoutEarly;
+    return SCORING_CONFIG.knockoutLate;
 }
 
 /**
