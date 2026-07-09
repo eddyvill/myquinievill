@@ -1,5 +1,5 @@
 // js/admin.js
-import { ADMIN_PASSWORD } from './config.js';
+import { ADMIN_PASSWORD, TOP_SCORER_CANDIDATES, TOP_SCORER_BONUS } from './config.js';
 import { doc, setDoc, writeBatch, deleteDoc, getDocs, collection } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
 import { allMatches } from './data.js';
 import { calculatePoints, renderPointsBreakdownHTML } from './scoring.js';
@@ -26,6 +26,7 @@ export function renderAdminAction(action, container) {
         case 'restore': return renderRestore(container);
         case 'emergency': return renderEmergency(container);
         case 'clean': return renderClean(container);
+        case 'topscorer': return renderTopScorer(container);
         default:
             container.innerHTML = '<p class="text-slate-400">Acción no válida.</p>';
     }
@@ -562,5 +563,132 @@ export async function fetchRealResults() {
     } finally {
         if (icon) icon.classList.remove('fa-spin');
         if (window.calculateAndRender) window.calculateAndRender();
+    }
+}
+
+// ==========================================
+// 8. GOLEADOR (MÁXIMO GOLEADOR)
+// ==========================================
+async function renderTopScorer(container) {
+    container.innerHTML = loading('Cargando datos...');
+
+    try {
+        const usersSnapshot = await getDocs(collection(db(), 'users'));
+        const users = usersSnapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+
+        const picksSnapshot = await getDocs(collection(db(), 'topScorerPicks'));
+        const picks = picksSnapshot.docs.map(d => d.data());
+
+        const configDoc = await getDocs(collection(db(), 'topScorerConfig'));
+        const configData = configDoc.docs.find(d => d.id === 'actual');
+        const currentWinner = configData ? configData.data().winner : null;
+        const currentWinnerName = configData ? configData.data().winnerName : '';
+
+        const candidateOptions = TOP_SCORER_CANDIDATES.map(c => `
+            <option value="${c.id}" ${c.id === currentWinner ? 'selected' : ''}>${c.name}</option>
+        `).join('');
+
+        // Build picks table
+        let tableRows = '';
+        if (picks.length === 0) {
+            tableRows = '<tr><td colspan="3" class="text-center py-4 text-slate-500">Nadie ha apostado aún.</td></tr>';
+        } else {
+            users.forEach(u => {
+                const pick = picks.find(p => p.userId === u.id);
+                if (pick) {
+                    const isCorrect = currentWinner && pick.playerId === currentWinner;
+                    tableRows += `
+                        <tr>
+                            <td class="px-3 py-2 font-semibold text-white">${u.name}</td>
+                            <td class="px-3 py-2">${pick.playerName}</td>
+                            <td class="px-3 py-2 text-right">${isCorrect ? '<span class="text-emerald-400 font-bold">+'+TOP_SCORER_BONUS+'</span>' : (currentWinner ? '<span class="text-red-400">✗</span>' : '<span class="text-slate-500">—</span>')}</td>
+                        </tr>
+                    `;
+                }
+            });
+            // Also show picks from orphaned UIDs
+            picks.forEach(pick => {
+                if (!users.find(u => u.id === pick.userId)) {
+                    tableRows += `
+                        <tr class="text-slate-500">
+                            <td class="px-3 py-2 italic">${pick.userId.substring(0,8)}…</td>
+                            <td class="px-3 py-2">${pick.playerName}</td>
+                            <td class="px-3 py-2 text-right">—</td>
+                        </tr>
+                    `;
+                }
+            });
+        }
+
+        container.innerHTML = `
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-xs uppercase text-slate-400 mb-1">Ganador del Trofeo Goleador</label>
+                    <p class="text-xs text-slate-500 mb-2">Selecciona al jugador que resultó ser el máximo goleador del mundial. Los apostadores que acertaron recibirán <span class="text-fifa-gold font-bold">+${TOP_SCORER_BONUS} puntos</span>.</p>
+                    <div class="flex gap-2">
+                        <select id="admin-topscorer-select" class="admin-select flex-1">${candidateOptions}</select>
+                        <button id="btn-admin-topscorer-save" class="bg-fifa-gold hover:bg-yellow-400 text-fifa-dark font-bold px-4 py-2 rounded-xl transition text-sm">Guardar</button>
+                        <button id="btn-admin-topscorer-clear" class="bg-slate-700 hover:bg-slate-600 text-white px-4 py-2 rounded-xl transition text-sm" ${currentWinner ? '' : 'disabled'}>Limpiar</button>
+                    </div>
+                    ${currentWinner ? `<p class="text-emerald-400 text-xs mt-1"><i class="fas fa-check-circle mr-1"></i>Actual ganador: <strong>${currentWinnerName}</strong></p>` : '<p class="text-slate-500 text-xs mt-1">Aún no se ha definido el ganador.</p>'}
+                </div>
+
+                <div class="border-t border-slate-700 pt-4">
+                    <h4 class="font-bold text-white text-sm mb-2">Apuestas registradas (${picks.length})</h4>
+                    <div class="max-h-48 overflow-y-auto">
+                        <table class="w-full text-xs">
+                            <thead class="text-slate-400 uppercase bg-slate-800 sticky top-0">
+                                <tr>
+                                    <th class="px-3 py-2 text-left">Jugador</th>
+                                    <th class="px-3 py-2 text-left">Apuesta</th>
+                                    <th class="px-3 py-2 text-right">Estado</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-800">${tableRows}</tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        document.getElementById('btn-admin-topscorer-save').addEventListener('click', async () => {
+            const select = document.getElementById('admin-topscorer-select');
+            const winnerId = select.value;
+            const candidate = TOP_SCORER_CANDIDATES.find(c => c.id === winnerId);
+            if (!candidate) return;
+            if (!confirm(`¿Definir a "${candidate.name}" como el máximo goleador? Esto otorgará +${TOP_SCORER_BONUS} puntos a quienes acertaron.`)) return;
+            try {
+                await setDoc(doc(db(), 'topScorerConfig', 'actual'), {
+                    winner: candidate.id,
+                    winnerName: candidate.name,
+                    updatedAt: new Date()
+                }, { merge: true });
+                toast(`Ganador definido: ${candidate.name}`, 'success');
+                renderTopScorer(container);
+            } catch (error) {
+                console.error(error);
+                toast('Error al guardar', 'error');
+            }
+        });
+
+        document.getElementById('btn-admin-topscorer-clear').addEventListener('click', async () => {
+            if (!confirm('¿Limpiar el ganador del goleador? Los puntos de bonificación se eliminarán.')) return;
+            try {
+                await setDoc(doc(db(), 'topScorerConfig', 'actual'), {
+                    winner: null,
+                    winnerName: null,
+                    updatedAt: new Date()
+                }, { merge: true });
+                toast('Ganador eliminado', 'info');
+                renderTopScorer(container);
+            } catch (error) {
+                console.error(error);
+                toast('Error al limpiar', 'error');
+            }
+        });
+
+    } catch (error) {
+        console.error(error);
+        container.innerHTML = '<p class="text-red-400 text-center">Error al cargar datos de goleador.</p>';
     }
 }
