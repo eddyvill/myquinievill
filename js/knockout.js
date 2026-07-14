@@ -162,7 +162,7 @@ function assignThirdPlaceTeams(matches, knockoutMatches) {
 }
 
 // Resolver un slot a un equipo real o placeholder descriptivo
-export function resolveSlot(slot, allMatches, thirdPlaceAssignments = {}) {
+export function resolveSlot(slot, allMatches, thirdPlaceAssignments = {}, lookup = (m) => m) {
     // Slot de grupo: 1A, 2B ...
     const groupSlotRegex = /^([123])([A-L])$/;
     const groupMatch = slot.match(groupSlotRegex);
@@ -215,7 +215,7 @@ export function resolveSlot(slot, allMatches, thirdPlaceAssignments = {}) {
     if (winnerMatch || loserMatch) {
         const isWinner = !!winnerMatch;
         const matchId = (winnerMatch || loserMatch)[1];
-        const match = allMatches.find(m => m.id === matchId);
+        const match = lookup(allMatches.find(m => m.id === matchId));
         if (!match) {
             return { name: isWinner ? `Ganador ${matchId}` : `Perdedor ${matchId}`, resolved: false, source: slot, team: null };
         }
@@ -249,11 +249,12 @@ export function resolveSlot(slot, allMatches, thirdPlaceAssignments = {}) {
 // Resolver todos los partidos de la fase final
 export function resolveKnockoutMatches(knockoutMatches, allMatches) {
     const thirdPlaceAssignments = assignThirdPlaceTeams(allMatches, knockoutMatches);
+    const resolvedMap = new Map();
 
-    return knockoutMatches.map(match => {
+    const resolved = knockoutMatches.map(match => {
         // Si el partido tiene equipos fijos (16avos hardcodeados), usarlos directamente
         if (match.fixedTeams && match.fixedTeams.home && match.fixedTeams.away) {
-            return {
+            const r = {
                 ...match,
                 homeTeam: match.fixedTeams.home,
                 awayTeam: match.fixedTeams.away,
@@ -262,11 +263,15 @@ export function resolveKnockoutMatches(knockoutMatches, allMatches) {
                 homeSource: match.slotHome,
                 awaySource: match.slotAway
             };
+            resolvedMap.set(match.id, r);
+            return r;
         }
 
-        const home = resolveSlot(match.slotHome, allMatches, thirdPlaceAssignments);
-        const away = resolveSlot(match.slotAway, allMatches, thirdPlaceAssignments);
-        return {
+        const lookup = (m) => resolvedMap.get(m.id) || m;
+
+        const home = resolveSlot(match.slotHome, allMatches, thirdPlaceAssignments, lookup);
+        const away = resolveSlot(match.slotAway, allMatches, thirdPlaceAssignments, lookup);
+        const r = {
             ...match,
             homeTeam: home.name,
             awayTeam: away.name,
@@ -275,5 +280,9 @@ export function resolveKnockoutMatches(knockoutMatches, allMatches) {
             homeSource: home.source,
             awaySource: away.source
         };
+        resolvedMap.set(match.id, r);
+        return r;
     });
+
+    return resolved;
 }
